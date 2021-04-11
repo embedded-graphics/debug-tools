@@ -1,7 +1,7 @@
 use embedded_graphics::{
-    fonts::{Font6x8, Text},
+    mono_font::{ascii::FONT_6X9, MonoTextStyle},
     prelude::*,
-    style::{MonoTextStyle, MonoTextStyleBuilder},
+    text::Text,
 };
 use embedded_graphics_simulator::{SimulatorEvent, Window};
 use sdl2::{keyboard::Keycode, mouse::MouseButton};
@@ -41,10 +41,11 @@ impl Menu {
         let name_delta = Point::new(6, 0);
         let value_delta = name_delta + Point::new((max_name_width as i32 + 1) * 6, 0);
 
-        let style = MonoTextStyle::new(Font6x8, color);
-        let style_inverted = MonoTextStyleBuilder::new(Font6x8)
-            .background_color(color)
-            .build();
+        let style = MonoTextStyle::new(&FONT_6X9, color);
+        let style_inverted = style;
+        // let style_inverted = MonoTextStyleBuilder::new(Font6x8)
+        //     .background_color(color)
+        //     .build();
 
         let mut position = Point::new(2, 2);
 

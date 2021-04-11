@@ -15,6 +15,93 @@ struct LineDebug {
     l2_end: Point,
 }
 
+// fn bisector(l1: &Line, l2: &Line) -> Line {
+//     let d1 = l1.delta();
+//     let d2 = l2.delta();
+
+//     let delta = d1 - d2;
+
+//     Line::new(l2.start, l2.start + delta)
+// }
+
+/// Bisecting line between two lines, tip to tail.
+fn bisector(l1: &Line, l2: &Line) -> Line {
+    let d1 = l1.delta();
+    let d2 = l2.delta();
+
+    // let len1 = micromath::F32Ext::sqrt(d1.length_squared() as f32);
+    // let len2 = micromath::F32Ext::sqrt(d2.length_squared() as f32);
+
+    let len1 = (d1.length_squared() as f32).sqrt();
+    let len2 = (d2.length_squared() as f32).sqrt();
+
+    let x1 = (d1.x as f32) / len1;
+    let y1 = (d1.y as f32) / len1;
+    let x2 = (d2.x as f32) / len2;
+    let y2 = (d2.y as f32) / len2;
+
+    let x = x1 - x2;
+    let y = y1 - y2;
+
+    let p = Point::new((x * 100.0) as i32, (y * 100.0) as i32);
+
+    Line::new(l2.start, l2.start + p)
+}
+
+// fn bisector(l1: &Line, l2: &Line) -> Line {
+//     let d1 = l1.perpendicular();
+//     let d2 = l2.perpendicular();
+
+//     let len1 = d1.length_squared();
+//     let len2 = d2.length_squared();
+
+//     // let len1 = len1.max(len2);
+//     // let len2 = len1.min(len2);
+
+//     // let ratio = dbg!(len1 / len2);
+
+//     let ratio = dbg!((len1 as f32).sqrt() / (len2 as f32).sqrt());
+
+//     let d2 = Point::new(
+//         ((d2.x as f32) * ratio) as i32,
+//         ((d2.y as f32) * ratio) as i32,
+//     );
+
+//     dbg!(d2);
+
+//     // let d1 = Point::new(d1.x.pow(2), d1.y.pow(2)) / len1;
+//     // let d2 = Point::new(d2.x.pow(2), d2.y.pow(2)) / len2;
+
+//     // let x1 = d1.x as f32 / len1;
+//     // let y1 = d1.y as f32 / len1;
+//     // let x2 = d2.x as f32 / len2;
+//     // let y2 = d2.y as f32 / len2;
+
+//     // let x1 = (x1 * 100.0) as i32;
+//     // let y1 = (y1 * 100.0) as i32;
+//     // let x2 = (x2 * 100.0) as i32;
+//     // let y2 = (y2 * 100.0) as i32;
+
+//     // let d1 = Point::new(x1, y1);
+//     // let d2 = Point::new(x2, y2);
+
+//     // let d1 = d1 / len1;
+//     // let d2 = d2 / len2;
+
+//     let delta = d1 - d2;
+
+//     Line::new(l2.start, l2.start + delta)
+// }
+
+// fn bisector(l1: &Line, l2: &Line) -> Line {
+//     let d1 = l1.perpendicular().delta();
+//     let d2 = l2.perpendicular().delta();
+
+//     let delta = (d1 + d2) / 2;
+
+//     Line::new(l2.start, l2.start + delta)
+// }
+
 impl App for LineDebug {
     type Color = Rgb565;
     const DISPLAY_SIZE: Size = Size::new(256, 256);
@@ -23,7 +110,7 @@ impl App for LineDebug {
         Self {
             l1_start: Point::new(150, 170),
             l1_end: Point::new(170, 200),
-            l2_start: Point::new(120, 130),
+            l2_start: Point::new(170, 200),
             l2_end: Point::new(145, 169),
         }
     }
@@ -52,7 +139,27 @@ impl App for LineDebug {
             .into_styled(PrimitiveStyle::with_stroke(Rgb565::CSS_SKY_BLUE, 1))
             .draw(display)?;
 
-        let text = match intersection(&line1, &line2) {
+        // Line::new(line1.end, line1.end + line1.perpendicular().delta())
+        //     .into_styled(PrimitiveStyle::with_stroke(Rgb565::MAGENTA, 1))
+        //     .draw(display)?;
+
+        // line2
+        //     .perpendicular()
+        //     .into_styled(PrimitiveStyle::with_stroke(Rgb565::YELLOW, 1))
+        //     .draw(display)?;
+
+        let l1 = line1.translate(Point::new(-10, 0));
+
+        l1.into_styled(PrimitiveStyle::with_stroke(Rgb565::CSS_SKY_BLUE, 1))
+            .draw(display)?;
+
+        let bisector = bisector(&line1, &line2);
+
+        bisector
+            .into_styled(PrimitiveStyle::with_stroke(Rgb565::CSS_ORANGE, 1))
+            .draw(display)?;
+
+        let text = match intersection(&l1, &bisector) {
             Intersection::Colinear => "colinear".to_string(),
             Intersection::Point {
                 point,
