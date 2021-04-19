@@ -5,6 +5,7 @@ use embedded_graphics::{
 use embedded_graphics_simulator::{SimulatorDisplay, Window};
 use std::time::{Duration, Instant};
 
+pub mod draw;
 mod menu;
 mod parameter;
 

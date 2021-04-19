@@ -1,5 +1,7 @@
 use embedded_graphics::{
-    pixelcolor::Rgb565, prelude::*, primitives::Polyline, style::PrimitiveStyle,
+    pixelcolor::Rgb565,
+    prelude::*,
+    primitives::{Polyline, PrimitiveStyle},
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;

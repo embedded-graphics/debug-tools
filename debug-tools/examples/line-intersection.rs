@@ -1,12 +1,14 @@
 use embedded_graphics::{
-    fonts::{Font6x8, Text},
+    geometry::AnchorPoint,
+    mono_font::{latin1::FONT_6X10, MonoTextStyle},
     pixelcolor::{Rgb565, WebColors},
     prelude::*,
-    primitives::{Circle, Line},
-    style::{MonoTextStyle, PrimitiveStyle},
+    primitives::Line,
+    primitives::PrimitiveStyle,
+    text::Text,
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
-use framework::prelude::*;
+use framework::{draw, prelude::*};
 
 struct LineDebug {
     l1_start: Point,
@@ -65,17 +67,24 @@ impl App for LineDebug {
                     Rgb565::CSS_SPRING_GREEN
                 };
 
-                Circle::with_center(point, 3)
-                    .into_styled(PrimitiveStyle::with_stroke(point_color, 1))
-                    .draw(display)?;
+                draw::point(point, point_color, display);
 
                 format!("Point: ({}, {}), {:?}", point.x, point.y, outer_side)
             }
         };
 
-        Text::new(&text, Point::new(12, 40))
-            .into_styled(MonoTextStyle::new(Font6x8, Rgb565::WHITE))
-            .draw(display)
+        let style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);
+        Text::new(
+            &text,
+            display
+                .bounding_box()
+                .offset(-5)
+                .anchor_point(AnchorPoint::BottomLeft),
+            style,
+        )
+        .draw(display)?;
+
+        Ok(())
     }
 }
 
