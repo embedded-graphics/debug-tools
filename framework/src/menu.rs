@@ -1,7 +1,7 @@
 use embedded_graphics::{
-    fonts::{Font6x8, Text},
+    mono_font::{latin1::FONT_6X10, MonoTextStyle, MonoTextStyleBuilder},
     prelude::*,
-    style::{MonoTextStyle, MonoTextStyleBuilder},
+    text::Text,
 };
 use embedded_graphics_simulator::{SimulatorEvent, Window};
 use sdl2::{keyboard::Keycode, mouse::MouseButton};
@@ -41,33 +41,29 @@ impl Menu {
         let name_delta = Point::new(6, 0);
         let value_delta = name_delta + Point::new((max_name_width as i32 + 1) * 6, 0);
 
-        let style = MonoTextStyle::new(Font6x8, color);
-        let style_inverted = MonoTextStyleBuilder::new(Font6x8)
+        let style = MonoTextStyle::new(&FONT_6X10, color);
+        let style_inverted = MonoTextStyleBuilder::new()
+            .font(&FONT_6X10)
             .background_color(color)
             .build();
 
-        let mut position = Point::new(2, 2);
+        let mut position = Point::new(2, 8);
 
         for (index, parameter) in parameters.iter().enumerate() {
-            if index == self.selected {
-                Text::new(">", position).into_styled(style).draw(target)?;
-            }
-
-            if index == self.selected && self.active {
-                Text::new(&parameter.name, position + name_delta)
-                    .into_styled(style_inverted)
-                    .draw(target)?;
+            let item_style = if index == self.selected && self.active {
+                style_inverted
             } else {
-                Text::new(&parameter.name, position + name_delta)
-                    .into_styled(style)
-                    .draw(target)?;
+                style
+            };
+
+            if index == self.selected {
+                Text::new(">", position, style).draw(target)?;
             }
 
-            Text::new(&parameter.value.to_string(), position + value_delta)
-                .into_styled(style)
-                .draw(target)?;
+            Text::new(&parameter.name, position + name_delta, item_style).draw(target)?;
+            Text::new(&parameter.value.to_string(), position + value_delta, style).draw(target)?;
 
-            position.y += 8;
+            position.y += 10;
         }
 
         Ok(())

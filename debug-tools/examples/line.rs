@@ -1,4 +1,8 @@
-use embedded_graphics::{pixelcolor::Rgb565, prelude::*, primitives::Line, style::PrimitiveStyle};
+use embedded_graphics::{
+    pixelcolor::Rgb565,
+    prelude::*,
+    primitives::{Line, PrimitiveStyle},
+};
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
 
