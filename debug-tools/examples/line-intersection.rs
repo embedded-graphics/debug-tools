@@ -3,12 +3,12 @@ use embedded_graphics::{
     mono_font::{latin1::FONT_6X10, MonoTextStyle},
     pixelcolor::{Rgb565, WebColors},
     prelude::*,
+    primitives::Line,
     primitives::PrimitiveStyle,
-    primitives::{Circle, Line},
     text::Text,
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
-use framework::prelude::*;
+use framework::{draw, prelude::*};
 
 struct LineDebug {
     l1_start: Point,
@@ -67,9 +67,7 @@ impl App for LineDebug {
                     Rgb565::CSS_SPRING_GREEN
                 };
 
-                Circle::with_center(point, 3)
-                    .into_styled(PrimitiveStyle::with_stroke(point_color, 1))
-                    .draw(display)?;
+                draw::point(point, point_color, display);
 
                 format!("Point: ({}, {}), {:?}", point.x, point.y, outer_side)
             }
