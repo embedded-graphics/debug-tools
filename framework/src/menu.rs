@@ -1,12 +1,14 @@
 use embedded_graphics::{
+    geometry::AnchorPoint,
     mono_font::{latin1::FONT_6X10, MonoTextStyle, MonoTextStyleBuilder},
     prelude::*,
+    primitives::{Line, PrimitiveStyle, Rectangle},
     text::Text,
 };
 use embedded_graphics_simulator::{SimulatorEvent, Window};
 use sdl2::{keyboard::Keycode, mouse::MouseButton};
 
-use crate::Parameter;
+use crate::{parameter::Value, Parameter};
 
 pub struct Menu {
     selected: usize,
@@ -61,7 +63,20 @@ impl Menu {
             }
 
             Text::new(&parameter.name, position + name_delta, item_style).draw(target)?;
-            Text::new(&parameter.value.to_string(), position + value_delta, style).draw(target)?;
+            match &parameter.value {
+                Value::Bool(value) => {
+                    let rect = Rectangle::new(
+                        position + value_delta - Point::new(0, 7),
+                        Size::new_equal(9),
+                    );
+
+                    Checkbox::new(**value, rect, color).draw(target)?;
+                }
+                _ => {
+                    Text::new(&parameter.value.to_string(), position + value_delta, style)
+                        .draw(target)?;
+                }
+            }
 
             position.y += 10;
         }
@@ -136,4 +151,50 @@ pub(crate) enum Event {
     Right,
     Activate,
     MouseMove(Point),
+}
+
+struct Checkbox<C> {
+    value: bool,
+    rect: Rectangle,
+    color: C,
+}
+
+impl<C> Checkbox<C> {
+    fn new(value: bool, rect: Rectangle, color: C) -> Self {
+        Self { value, rect, color }
+    }
+}
+
+impl<C: PixelColor> Drawable for Checkbox<C> {
+    type Color = C;
+    type Output = ();
+
+    fn draw<D>(&self, target: &mut D) -> Result<Self::Output, D::Error>
+    where
+        D: DrawTarget<Color = Self::Color>,
+    {
+        let style = PrimitiveStyle::with_stroke(self.color, 1);
+
+        self.rect.into_styled(style).draw(target)?;
+
+        if self.value {
+            let inside = self.rect.offset(-2);
+
+            Line::new(
+                inside.anchor_point(AnchorPoint::TopLeft),
+                inside.anchor_point(AnchorPoint::BottomRight),
+            )
+            .into_styled(style)
+            .draw(target)?;
+
+            Line::new(
+                inside.anchor_point(AnchorPoint::TopRight),
+                inside.anchor_point(AnchorPoint::BottomLeft),
+            )
+            .into_styled(style)
+            .draw(target)?;
+        }
+
+        Ok(())
+    }
 }

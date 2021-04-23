@@ -10,6 +10,7 @@ struct CircleDebug {
     center: Point,
     diameter: u32,
     stroke_width: u32,
+    show_bounding_box: bool,
 }
 
 impl App for CircleDebug {
@@ -21,6 +22,7 @@ impl App for CircleDebug {
             center: Point::new(128, 128),
             diameter: 50,
             stroke_width: 1,
+            show_bounding_box: false,
         }
     }
 
@@ -29,6 +31,7 @@ impl App for CircleDebug {
             Parameter::new("center", &mut self.center),
             Parameter::new("diameter", &mut self.diameter),
             Parameter::new("stroke", &mut self.stroke_width),
+            Parameter::new("show BB", &mut self.show_bounding_box),
         ]
     }
 
@@ -45,9 +48,15 @@ impl App for CircleDebug {
             .build();
         let styled_circle = circle.into_styled(style);
 
-        draw::bounding_box(&styled_circle, display);
+        if self.show_bounding_box {
+            draw::bounding_box(&styled_circle, display);
+        }
+
         styled_circle.draw(display)?;
-        draw::point(self.center, Rgb888::CSS_LIGHT_SKY_BLUE, display);
+
+        if self.show_bounding_box {
+            draw::point(self.center, Rgb888::CSS_LIGHT_SKY_BLUE, display);
+        }
 
         Ok(())
     }
