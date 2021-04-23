@@ -26,6 +26,7 @@ pub enum Value<'a> {
     U32(&'a mut u32),
     I32(&'a mut i32),
     Point(&'a mut Point),
+    Bool(&'a mut bool),
 }
 
 impl<'a> Value<'a> {
@@ -49,6 +50,10 @@ impl<'a> Value<'a> {
                 Event::MouseMove(p) => **point = p,
                 _ => {}
             },
+            Self::Bool(value) => match event {
+                Event::Down | Event::Left | Event::Up | Event::Right => **value ^= true,
+                _ => {}
+            },
         }
     }
 }
@@ -59,6 +64,7 @@ impl fmt::Display for Value<'_> {
             Value::U32(value) => value.fmt(f),
             Value::I32(value) => value.fmt(f),
             Value::Point(Point { x, y }) => write!(f, "({}, {})", x, y),
+            Value::Bool(value) => value.fmt(f),
         }
     }
 }
@@ -78,5 +84,11 @@ impl<'a> From<&'a mut u32> for Value<'a> {
 impl<'a> From<&'a mut Point> for Value<'a> {
     fn from(value: &'a mut Point) -> Self {
         Self::Point(value)
+    }
+}
+
+impl<'a> From<&'a mut bool> for Value<'a> {
+    fn from(value: &'a mut bool) -> Self {
+        Self::Bool(value)
     }
 }

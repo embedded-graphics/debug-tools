@@ -12,6 +12,7 @@ struct ArcDebug {
     angle_start: i32,
     angle_sweep: i32,
     stroke_width: u32,
+    show_bounding_box: bool,
 }
 
 impl App for ArcDebug {
@@ -25,6 +26,7 @@ impl App for ArcDebug {
             angle_start: 0,
             angle_sweep: 30,
             stroke_width: 1,
+            show_bounding_box: false,
         }
     }
 
@@ -35,6 +37,7 @@ impl App for ArcDebug {
             Parameter::new("start", &mut self.angle_start),
             Parameter::new("sweep", &mut self.angle_sweep),
             Parameter::new("stroke", &mut self.stroke_width),
+            Parameter::new("show BB", &mut self.show_bounding_box),
         ]
     }
 
@@ -52,9 +55,15 @@ impl App for ArcDebug {
         let style = PrimitiveStyle::with_stroke(Rgb888::CSS_SPRING_GREEN, self.stroke_width);
         let styled_arc = arc.into_styled(style);
 
-        draw::bounding_box(&styled_arc, display);
+        if self.show_bounding_box {
+            draw::bounding_box(&styled_arc, display);
+        }
+
         styled_arc.draw(display)?;
-        draw::point(self.center, Rgb888::CSS_LIGHT_SKY_BLUE, display);
+
+        if self.show_bounding_box {
+            draw::point(self.center, Rgb888::CSS_LIGHT_SKY_BLUE, display);
+        }
 
         Ok(())
     }
