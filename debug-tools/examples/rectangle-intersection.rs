@@ -46,11 +46,9 @@ impl App for RectangleIntersection {
 
         let intersection = base_rectangle.intersection(&moving_rectangle);
 
-        if intersection.size != Size::zero() {
-            intersection
-                .into_styled(PrimitiveStyle::with_fill(Rgb888::BLUE))
-                .draw(display)?;
-        }
+        intersection
+            .into_styled(PrimitiveStyle::with_fill(Rgb888::BLUE))
+            .draw(display)?;
 
         Ok(())
     }
