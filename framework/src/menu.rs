@@ -1,6 +1,6 @@
 use embedded_graphics::{
     geometry::AnchorPoint,
-    mono_font::{latin1::FONT_6X10, MonoTextStyle, MonoTextStyleBuilder},
+    mono_font::{iso_8859_1::FONT_6X10, MonoTextStyle, MonoTextStyleBuilder},
     prelude::*,
     primitives::{Line, PrimitiveStyle, Rectangle},
     text::Text,
