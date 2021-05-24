@@ -58,7 +58,7 @@ impl App for RectangleIntersection {
 
 fn main() {
     let settings = OutputSettingsBuilder::new().scale(3).build();
-    let window = Window::new("Line debugger", &settings);
+    let window = Window::new("Rectangle intersection", &settings);
 
     RectangleIntersection::run(window);
 }
