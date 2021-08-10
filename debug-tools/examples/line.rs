@@ -20,6 +20,7 @@ fn x_perpendicular(
     einit: i32,
     width: i32,
     winit: i32,
+    extra: bool,
 ) -> Result<(), std::convert::Infallible> {
     let mut threshold = dx - 2 * dy;
     let mut E_diag = -2 * dx;
@@ -30,49 +31,88 @@ fn x_perpendicular(
     let mut y = y0;
     let mut x = x0;
     let mut error = einit;
-    let mut tk = dx + dy - winit;
+    // let mut tk = dx + dy - winit;
 
-    while tk <= width {
-        Pixel(Point::new(x, y), Rgb565::RED).draw(display)?;
+    // let mut tk = (dx + dy) / 2;
+    // let mut tk = winit;
 
-        if error >= threshold {
-            x += xstep;
-            error += E_diag;
-            tk += 2 * dy;
+    let mut tk = -winit;
+    let mut tk2 = winit;
+
+    let mut y2 = y0;
+    let mut x2 = x0;
+    let mut error2 = -einit;
+    // let mut tk2 = dx + dy + winit;
+
+    let (c1, c2) = if extra {
+        (Rgb565::RED, Rgb565::GREEN)
+    } else {
+        (Rgb565::CSS_CORNFLOWER_BLUE, Rgb565::YELLOW)
+    };
+
+    let mut swap = 1;
+
+    while tk.pow(2) <= width || tk2.pow(2) <= width {
+        if swap == 1 && tk.pow(2) <= width {
+            Pixel(Point::new(x, y), c1).draw(display)?;
+
+            if error >= threshold {
+                x += xstep;
+                error += E_diag;
+                tk += 2 * dy;
+            }
+
+            error += E_square;
+            y += ystep;
+            tk += 2 * dx;
+            q += 1;
+        } else {
+            if p > 0 {
+                Pixel(Point::new(x2, y2), c2).draw(display)?;
+            }
+
+            if error2 > threshold {
+                x2 -= xstep;
+                error2 += E_diag;
+                tk2 += 2 * dy;
+            }
+
+            error2 += E_square;
+            y2 -= ystep;
+            tk2 += 2 * dx;
+
+            p += 1;
         }
 
-        error += E_square;
-        y += ystep;
-        tk += 2 * dx;
-        q += 1;
+        swap *= -1;
     }
 
-    let mut y = y0;
-    let mut x = x0;
-    let mut error = -einit;
-    let mut tk = dx + dy + winit;
+    // let mut y2 = y0;
+    // let mut x2 = x0;
+    // let mut error2 = -einit;
+    // let mut tk = dx + dy + winit;
 
-    while tk <= width {
-        if p > 0 {
-            Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
-        }
+    // while tk <= width {
+    //     if p > 0 {
+    //         Pixel(Point::new(x2, y2), Rgb565::GREEN).draw(display)?;
+    //     }
 
-        if error > threshold {
-            x = x - xstep;
-            error += E_diag;
-            tk += 2 * dy;
-        }
+    //     if error2 > threshold {
+    //         x2 -= xstep;
+    //         error2 += E_diag;
+    //         tk += 2 * dy;
+    //     }
 
-        error += E_square;
-        y = y - ystep;
-        tk += 2 * dx;
-        p += 1;
-    }
+    //     error2 += E_square;
+    //     y2 -= ystep;
+    //     tk += 2 * dx;
+    //     p += 1;
+    // }
 
-    // we need this for very thin lines
-    if q == 0 && p < 2 {
-        Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display)?;
-    }
+    // // we need this for very thin lines
+    // if q == 0 && p < 2 {
+    //     Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display)?;
+    // }
 
     Ok(())
 }
@@ -99,7 +139,9 @@ fn x_varthick_line(
     let mut length = dx + 1;
 
     for p in 0..length {
-        x_perpendicular(display, x, y, dx, dy, pxstep, pystep, p_error, width, error)?;
+        x_perpendicular(
+            display, x, y, dx, dy, pxstep, pystep, p_error, width, error, false,
+        )?;
         if error >= threshold {
             y += ystep;
             error += E_diag;
@@ -115,6 +157,7 @@ fn x_varthick_line(
                     p_error + E_diag + E_square,
                     width,
                     error,
+                    true,
                 )?;
                 p_error += E_diag;
             }
@@ -182,13 +225,13 @@ fn y_perpendicular(
         }
 
         if error >= threshold {
-            y = y - ystep;
+            y -= ystep;
             error += E_diag;
             tk += 2 * dx;
         }
 
         error += E_square;
-        x = x - xstep;
+        x -= xstep;
         tk += 2 * dy;
         p += 1;
     }
@@ -260,7 +303,7 @@ struct LineDebug {
 
 impl App for LineDebug {
     type Color = Rgb565;
-    const DISPLAY_SIZE: Size = Size::new(64, 64);
+    const DISPLAY_SIZE: Size = Size::new(256, 256);
 
     fn new() -> Self {
         let start = Point::new(
@@ -270,7 +313,7 @@ impl App for LineDebug {
         Self {
             start,
             end: start + Point::new(25, 27),
-            stroke_width: 1,
+            stroke_width: 10,
         }
     }
 
@@ -296,7 +339,8 @@ impl App for LineDebug {
         let mut dx = x1 - x0;
         let mut dy = y1 - y0;
 
-        let width = self.stroke_width as i32 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
+        // let width = 2 * self.stroke_width as i32 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
+        let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
 
         let mut xstep = 1;
         let mut ystep = 1;
