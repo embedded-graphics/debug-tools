@@ -7,133 +7,102 @@ use embedded_graphics::{
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
 
-fn thin_octant1(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    x0: i32,
-    y0: i32,
-    dx: i32,
-    dy: i32,
-) -> Result<(), std::convert::Infallible> {
-    let mut error = 0;
-    let mut y = y0;
-    let mut x = x0;
-    let mut threshold = dx - 2 * dy;
-    let mut E_diag = -2 * dx;
-    let mut E_square = 2 * dy;
-    let mut length = dx;
+// fn thin_octant1(
+//     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
+//     x0: i32,
+//     y0: i32,
+//     dx: i32,
+//     dy: i32,
+// ) -> Result<(), std::convert::Infallible> {
+//     let mut error = 0;
+//     let mut y = y0;
+//     let mut x = x0;
+//     let mut threshold = dx - 2 * dy;
+//     let mut E_diag = -2 * dx;
+//     let mut E_square = 2 * dy;
+//     let mut length = dx;
 
-    for p in 1..length {
-        Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
+//     for p in 1..length {
+//         Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
 
-        if error > threshold {
-            y += 1;
-            error += E_diag;
-        }
-        error += E_square;
-        x += 1;
-    }
+//         if error > threshold {
+//             y += 1;
+//             error += E_diag;
+//         }
+//         error += E_square;
+//         x += 1;
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-fn thick_octant1(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    x0: i32,
-    y0: i32,
-    dx: i32,
-    dy: i32,
-) -> Result<(), std::convert::Infallible> {
-    // the perpendicular error or 'phase'
-    let mut p_error = 0;
-    let mut error = 0;
-    let mut y = y0;
-    let mut x = x0;
-    let mut threshold = dx - 2 * dy;
-    let mut E_diag = -2 * dx;
-    let mut E_square = 2 * dy;
-    let mut length = dx;
+// fn thick_octant1(
+//     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
+//     x0: i32,
+//     y0: i32,
+//     dx: i32,
+//     dy: i32,
+// ) -> Result<(), std::convert::Infallible> {
+//     // the perpendicular error or 'phase'
+//     let mut p_error = 0;
+//     let mut error = 0;
+//     let mut y = y0;
+//     let mut x = x0;
+//     let mut threshold = dx - 2 * dy;
+//     let mut E_diag = -2 * dx;
+//     let mut E_square = 2 * dy;
+//     let mut length = dx;
 
-    for p in 1..length {
-        pleft_octant1(display, x, y, dx, dy, p_error)?;
-        pright_octant1(display, x, y, dx, dy, p_error)?;
+//     for p in 1..length {
+//         pleft_octant1(display, x, y, dx, dy, p_error)?;
+//         pright_octant1(display, x, y, dx, dy, p_error)?;
 
-        if error > threshold {
-            y = y + 1;
-            error = error + E_diag;
-            if p_error > threshold {
-                pleft_octant1(display, x, y, dx, dy, p_error + E_diag + E_square)?;
-                // FIXME: Overdraw
-                // pright_octant1(display, x, y, dx, dy, p_error + E_diag + E_square)?;
-                p_error = p_error + E_diag;
-            }
-            p_error = p_error + E_square;
-        }
-        error = error + E_square;
-        x = x + 1;
-    }
+//         if error > threshold {
+//             y = y + 1;
+//             error = error + E_diag;
+//             if p_error > threshold {
+//                 pleft_octant1(display, x, y, dx, dy, p_error + E_diag + E_square)?;
+//                 // FIXME: Overdraw
+//                 // pright_octant1(display, x, y, dx, dy, p_error + E_diag + E_square)?;
+//                 p_error = p_error + E_diag;
+//             }
+//             p_error = p_error + E_square;
+//         }
+//         error = error + E_square;
+//         x = x + 1;
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-fn pleft_octant1(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    x0: i32,
-    y0: i32,
-    dx: i32,
-    dy: i32,
-    mut error: i32,
-) -> Result<(), std::convert::Infallible> {
-    let mut y = y0;
-    let mut x = x0;
-    let mut threshold = dx - 2 * dy;
-    let mut E_diag = -2 * dx;
-    let mut E_square = 2 * dy;
-    let mut thickness = 10;
+// fn pleft_octant1(
+//     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
+//     x0: i32,
+//     y0: i32,
+//     dx: i32,
+//     dy: i32,
+//     mut error: i32,
+// ) -> Result<(), std::convert::Infallible> {
+//     let mut y = y0;
+//     let mut x = x0;
+//     let mut threshold = dx - 2 * dy;
+//     let mut E_diag = -2 * dx;
+//     let mut E_square = 2 * dy;
+//     let mut thickness = 10;
 
-    for p in 1..thickness {
-        Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
+//     for p in 1..thickness {
+//         Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
 
-        if error > threshold {
-            x = x - 1;
-            error = error + E_diag;
-        }
-        error = error + E_square;
-        y = y + 1;
-    }
+//         if error > threshold {
+//             x = x - 1;
+//             error = error + E_diag;
+//         }
+//         error = error + E_square;
+//         y = y + 1;
+//     }
 
-    Ok(())
-}
-
-fn pright_octant1(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    x0: i32,
-    y0: i32,
-    dx: i32,
-    dy: i32,
-    mut error: i32,
-) -> Result<(), std::convert::Infallible> {
-    let mut y = y0;
-    let mut x = x0;
-    let mut threshold = dx - 2 * dy;
-    let mut E_diag = -2 * dx;
-    let mut E_square = 2 * dy;
-    let mut thickness = 10;
-
-    error = -error;
-
-    for p in 1..thickness {
-        if error > threshold {
-            x = x + 1;
-            error = error + E_diag;
-        }
-        error = error + E_square;
-        y = y - 1;
-
-        Pixel(Point::new(x, y), Rgb565::RED).draw(display)?;
-    }
-
-    Ok(())
-}
+//     Ok(())
+// }
 
 // fn pright_octant1(
 //     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
@@ -150,12 +119,14 @@ fn pright_octant1(
 //     let mut E_square = 2 * dy;
 //     let mut thickness = 10;
 
+//     error = -error;
+
 //     for p in 1..thickness {
-//         if error < -threshold {
+//         if error > threshold {
 //             x = x + 1;
-//             error = error - E_diag;
+//             error = error + E_diag;
 //         }
-//         error = error - E_square;
+//         error = error + E_square;
 //         y = y - 1;
 
 //         Pixel(Point::new(x, y), Rgb565::RED).draw(display)?;
@@ -163,6 +134,135 @@ fn pright_octant1(
 
 //     Ok(())
 // }
+
+// // fn pright_octant1(
+// //     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
+// //     x0: i32,
+// //     y0: i32,
+// //     dx: i32,
+// //     dy: i32,
+// //     mut error: i32,
+// // ) -> Result<(), std::convert::Infallible> {
+// //     let mut y = y0;
+// //     let mut x = x0;
+// //     let mut threshold = dx - 2 * dy;
+// //     let mut E_diag = -2 * dx;
+// //     let mut E_square = 2 * dy;
+// //     let mut thickness = 10;
+
+// //     for p in 1..thickness {
+// //         if error < -threshold {
+// //             x = x + 1;
+// //             error = error - E_diag;
+// //         }
+// //         error = error - E_square;
+// //         y = y - 1;
+
+// //         Pixel(Point::new(x, y), Rgb565::RED).draw(display)?;
+// //     }
+
+// //     Ok(())
+// // }
+
+fn perp_octant1(
+    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
+    x0: i32,
+    y0: i32,
+    dx: i32,
+    dy: i32,
+    einit: i32,
+    width: i32,
+    winit: i32,
+) -> Result<(), std::convert::Infallible> {
+    let mut threshold = dx - 2 * dy;
+    let mut E_diag = -2 * dx;
+    let mut E_square = 2 * dy;
+    let mut wthr = 2 * width * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
+
+    let mut x = x0;
+    let mut y = y0;
+    let mut error = einit;
+    let mut tk = dx + dy - winit;
+
+    while tk <= wthr {
+        Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
+        if error > threshold {
+            x = x - 1;
+            error = error + E_diag;
+            tk = tk + 2 * dy;
+        }
+        error = error + E_square;
+        y = y + 1;
+        tk = tk + 2 * dx;
+    }
+
+    let mut x = x0;
+    let mut y = y0;
+
+    let mut error = -einit;
+    let mut tk = dx + dy + winit;
+
+    while tk <= wthr {
+        Pixel(Point::new(x, y), Rgb565::RED).draw(display)?;
+        if error > threshold {
+            x = x + 1;
+            error = error + E_diag;
+            tk = tk + 2 * dy;
+        }
+        error = error + E_square;
+        y = y - 1;
+        tk = tk + 2 * dx;
+    }
+
+    Ok(())
+}
+
+fn thick_octant1(
+    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    width: i32,
+) -> Result<(), std::convert::Infallible> {
+    let mut dx = x1 - x0;
+    let mut dy = y1 - y0;
+    let mut p_error = 0;
+    let mut error = 0;
+    let mut y = y0;
+    let mut x = x0;
+    let mut threshold = dx - 2 * dy;
+    let mut E_diag = -2 * dx;
+    let mut E_square = 2 * dy;
+    let mut length = dx + 1;
+
+    for p in 1..length {
+        perp_octant1(display, x, y, dx, dy, p_error, width, error)?;
+
+        if error > threshold {
+            y = y + 1;
+            error = error + E_diag;
+            if p_error > threshold {
+                perp_octant1(
+                    display,
+                    x,
+                    y,
+                    dx,
+                    dy,
+                    p_error + E_diag + E_square,
+                    width,
+                    error,
+                )?;
+                p_error = p_error + E_diag;
+            }
+            p_error = p_error + E_square;
+        }
+        error = error + E_square;
+        x = x + 1;
+    }
+
+    Ok(())
+}
 
 struct LineDebug {
     start: Point,
@@ -197,15 +297,12 @@ impl App for LineDebug {
         let Point { x: x0, y: y0 } = self.start;
         let Point { x: x1, y: y1 } = self.end;
 
-        let dx = x1 - x0;
-        let dy = y1 - y0;
-
         // thin_octant1(display, x0, y0, dx, dy)?;
-        thick_octant1(display, x0, y0, dx, dy)?;
+        thick_octant1(display, x0, y0, x1, y1, 10)?;
 
-        let mut mock_display = MockDisplay::new();
-
-        thick_octant1(&mut mock_display, x0, y0, dx, dy).unwrap();
+        // FIXME: Overdraw
+        // let mut mock_display = MockDisplay::new();
+        // thick_octant1(&mut mock_display, x0, y0, x1, y1, 10).unwrap();
 
         Ok(())
 
