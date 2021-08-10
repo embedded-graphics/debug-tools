@@ -97,10 +97,9 @@ fn x_varthick_line(
     let mut E_diag = -2 * dx;
     let mut E_square = 2 * dy;
     let mut length = dx + 1;
-    let mut d = width * 2 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
 
     for p in 0..length {
-        x_perpendicular(display, x, y, dx, dy, pxstep, pystep, p_error, d, error)?;
+        x_perpendicular(display, x, y, dx, dy, pxstep, pystep, p_error, width, error)?;
         if error >= threshold {
             y += ystep;
             error += E_diag;
@@ -114,7 +113,7 @@ fn x_varthick_line(
                     pxstep,
                     pystep,
                     p_error + E_diag + E_square,
-                    d,
+                    width,
                     error,
                 )?;
                 p_error += E_diag;
@@ -222,10 +221,9 @@ fn y_varthick_line(
     let mut E_diag = -2 * dy;
     let mut E_square = 2 * dx;
     let mut length = dy + 1;
-    let mut d = width * 2 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
 
     for p in 0..length {
-        y_perpendicular(display, x, y, dx, dy, pxstep, pystep, p_error, d, error)?;
+        y_perpendicular(display, x, y, dx, dy, pxstep, pystep, p_error, width, error)?;
 
         if error >= threshold {
             x += xstep;
@@ -240,7 +238,7 @@ fn y_varthick_line(
                     pxstep,
                     pystep,
                     p_error + E_diag + E_square,
-                    d,
+                    width,
                     error,
                 )?;
                 p_error += E_diag;
@@ -298,7 +296,7 @@ impl App for LineDebug {
         let mut dx = x1 - x0;
         let mut dy = y1 - y0;
 
-        let width = 20;
+        let width = self.stroke_width as i32 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
 
         let mut xstep = 1;
         let mut ystep = 1;
