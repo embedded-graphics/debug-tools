@@ -260,7 +260,7 @@ struct LineDebug {
 
 impl App for LineDebug {
     type Color = Rgb565;
-    const DISPLAY_SIZE: Size = Size::new(256, 256);
+    const DISPLAY_SIZE: Size = Size::new(64, 64);
 
     fn new() -> Self {
         let start = Point::new(
@@ -269,7 +269,7 @@ impl App for LineDebug {
         );
         Self {
             start,
-            end: start + Point::new(40, 50),
+            end: start + Point::new(25, 27),
             stroke_width: 1,
         }
     }
@@ -362,18 +362,41 @@ impl App for LineDebug {
 
         // TODO: xch or swap_sides
 
+        let mut mock_display = MockDisplay::new();
+        mock_display.set_allow_out_of_bounds_drawing(true);
+
         if dx > dy {
             x_varthick_line(display, x0, y0, dx, dy, xstep, ystep, pxstep, pystep, width)?;
+            x_varthick_line(
+                &mut mock_display,
+                x0,
+                y0,
+                dx,
+                dy,
+                xstep,
+                ystep,
+                pxstep,
+                pystep,
+                width,
+            )?;
         } else {
             y_varthick_line(display, x0, y0, dx, dy, xstep, ystep, pxstep, pystep, width)?;
+            y_varthick_line(
+                &mut mock_display,
+                x0,
+                y0,
+                dx,
+                dy,
+                xstep,
+                ystep,
+                pxstep,
+                pystep,
+                width,
+            )?;
         }
 
         // thin_octant1(display, x0, y0, dx, dy)?;
         // thick_octant1(display, x0, y0, x1, y1, 10)?;
-
-        // FIXME: Overdraw
-        // let mut mock_display = MockDisplay::new();
-        // thick_octant1(&mut mock_display, x0, y0, x1, y1, 10).unwrap();
 
         Ok(())
 
