@@ -44,7 +44,10 @@ pub trait AppExt: App {
     fn run(window: Window);
 }
 
-impl<T: App> AppExt for T {
+impl<T: App> AppExt for T
+where
+    <T as App>::Color: From<Rgb888>,
+{
     fn run(mut window: Window) {
         let mut app = T::new();
         let mut display = SimulatorDisplay::new(T::DISPLAY_SIZE);
