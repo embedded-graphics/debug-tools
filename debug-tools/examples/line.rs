@@ -179,17 +179,19 @@ fn x_varthick_line(
             error += e_minor;
 
             if p_error >= threshold {
-                x_perpendicular(
-                    display,
-                    point.x,
-                    point.y,
-                    delta,
-                    pstep,
-                    p_error + e_minor + e_major,
-                    width,
-                    error,
-                    true,
-                )?;
+                if width > 1 {
+                    x_perpendicular(
+                        display,
+                        point.x,
+                        point.y,
+                        delta,
+                        pstep,
+                        p_error + e_minor + e_major,
+                        width,
+                        error,
+                        true,
+                    )?;
+                }
 
                 p_error += e_minor;
             }
