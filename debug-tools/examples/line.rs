@@ -44,6 +44,16 @@ fn x_perpendicular(
     let mut error2 = -einit;
     // let mut tk2 = dx + dy + winit;
 
+    let width = width - 1;
+
+    // let width = width.pow(2) * (dx * dx + dy * dy);
+    let width_l = width;
+    // Put extras on right side
+    let width_r = width + (width % 2);
+
+    let width_l = width_l.pow(2) * (dx * dx + dy * dy);
+    let width_r = width_r.pow(2) * (dx * dx + dy * dy);
+
     let (c1, c2) = if extra {
         (Rgb565::RED, Rgb565::GREEN)
     } else {
@@ -52,61 +62,76 @@ fn x_perpendicular(
 
     let mut swap = 1;
 
-    while tk.pow(2) <= width || tk2.pow(2) <= width {
-        if swap == 1 && tk.pow(2) <= width {
-            Pixel(Point::new(x, y), c1).draw(display)?;
+    while tk.pow(2) <= width_l {
+        Pixel(Point::new(x, y), c1).draw(display)?;
 
-            if error >= threshold {
-                x += xstep;
-                error += E_diag;
-                tk += 2 * dy;
-            }
-
-            error += E_square;
-            y += ystep;
-            tk += 2 * dx;
-            q += 1;
-        } else {
-            if p > 0 {
-                Pixel(Point::new(x2, y2), c2).draw(display)?;
-            }
-
-            if error2 > threshold {
-                x2 -= xstep;
-                error2 += E_diag;
-                tk2 += 2 * dy;
-            }
-
-            error2 += E_square;
-            y2 -= ystep;
-            tk2 += 2 * dx;
-
-            p += 1;
+        if error >= threshold {
+            x += xstep;
+            error += E_diag;
+            tk += 2 * dy;
         }
 
-        swap *= -1;
+        error += E_square;
+        y += ystep;
+        tk += 2 * dx;
+        q += 1;
     }
 
-    // let mut y2 = y0;
-    // let mut x2 = x0;
-    // let mut error2 = -einit;
-    // let mut tk = dx + dy + winit;
+    let mut y2 = y0;
+    let mut x2 = x0;
+    let mut error2 = -einit;
+    let mut tk = winit;
 
-    // while tk <= width {
-    //     if p > 0 {
-    //         Pixel(Point::new(x2, y2), Rgb565::GREEN).draw(display)?;
+    while tk.pow(2) <= width_r {
+        if p > 0 {
+            Pixel(Point::new(x2, y2), Rgb565::GREEN).draw(display)?;
+        }
+
+        if error2 > threshold {
+            x2 -= xstep;
+            error2 += E_diag;
+            tk += 2 * dy;
+        }
+
+        error2 += E_square;
+        y2 -= ystep;
+        tk += 2 * dx;
+        p += 1;
+    }
+
+    // while tk.pow(2) <= width_l || tk2.pow(2) <= width_r {
+    //     if swap == 1 && tk.pow(2) <= width {
+    //         Pixel(Point::new(x, y), c1).draw(display)?;
+
+    //         if error >= threshold {
+    //             x += xstep;
+    //             error += E_diag;
+    //             tk += 2 * dy;
+    //         }
+
+    //         error += E_square;
+    //         y += ystep;
+    //         tk += 2 * dx;
+    //         q += 1;
+    //     } else {
+    //         if p > 0 {
+    //             Pixel(Point::new(x2, y2), c2).draw(display)?;
+    //         }
+
+    //         if error2 > threshold {
+    //             x2 -= xstep;
+    //             error2 += E_diag;
+    //             tk2 += 2 * dy;
+    //         }
+
+    //         error2 += E_square;
+    //         y2 -= ystep;
+    //         tk2 += 2 * dx;
+
+    //         p += 1;
     //     }
 
-    //     if error2 > threshold {
-    //         x2 -= xstep;
-    //         error2 += E_diag;
-    //         tk += 2 * dy;
-    //     }
-
-    //     error2 += E_square;
-    //     y2 -= ystep;
-    //     tk += 2 * dx;
-    //     p += 1;
+    //     swap *= -1;
     // }
 
     // // we need this for very thin lines
@@ -312,7 +337,8 @@ impl App for LineDebug {
         );
         Self {
             start,
-            end: start + Point::new(25, 27),
+            // end: start + Point::new(25, 27),
+            end: start + Point::new(100, 0),
             stroke_width: 10,
         }
     }
@@ -340,7 +366,8 @@ impl App for LineDebug {
         let mut dy = y1 - y0;
 
         // let width = 2 * self.stroke_width as i32 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
-        let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
+        // let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
+        let width = self.stroke_width as i32;
 
         let mut xstep = 1;
         let mut ystep = 1;
