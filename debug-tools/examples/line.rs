@@ -37,26 +37,58 @@ impl LineSide {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct MajorMinor<T> {
+    major: T,
+    minor: T,
+}
+
+impl<T> MajorMinor<T> {
+    fn new(major: T, minor: T) -> Self {
+        Self { major, minor }
+    }
+}
+
 fn x_perpendicular(
     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
     x0: i32,
     y0: i32,
-    dx: i32,
-    dy: i32,
-    xstep: i32,
-    ystep: i32,
+
+    delta: MajorMinor<i32>,
+    mut step: MajorMinor<Point>,
     einit: i32,
     width: i32,
     winit: i32,
     extra: bool,
 ) -> Result<(), std::convert::Infallible> {
+    let mut point = Point::new(x0, y0);
+
     if width == 0 {
         return Ok(());
     }
 
     if width == 1 {
-        return Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display);
+        return Pixel(point, Rgb565::YELLOW).draw(display);
     }
+
+    let dx = delta.major;
+    let dy = delta.minor;
+
+    dbg!(step.major, step.minor);
+
+    let sign = match (step.major, step.minor) {
+        (Point { x: -1, y: 0 }, Point { x: 0, y: 1 }) => -1,
+        (Point { x: 0, y: -1 }, Point { x: -1, y: 0 }) => -1,
+        (Point { x: 1, y: 0 }, Point { x: 0, y: -1 }) => -1,
+        (Point { x: 0, y: 1 }, Point { x: 1, y: 0 }) => -1,
+        _ => 1,
+    };
+
+    step.major *= sign;
+    step.minor *= sign;
+
+    let dx = dx.abs();
+    let dy = dy.abs();
 
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
@@ -64,10 +96,11 @@ fn x_perpendicular(
     let mut p = 0;
     let mut q = 0;
 
-    let mut y = y0;
-    let mut x = x0;
-    let mut error = einit;
+    // let mut y = y0;
+    // let mut x = x0;
 
+    // Swap signs in some conditions
+    let mut error = einit;
     let mut tk = -winit;
 
     let side = LineSide::Center;
@@ -83,43 +116,42 @@ fn x_perpendicular(
         (Rgb565::CSS_CORNFLOWER_BLUE, Rgb565::YELLOW)
     };
 
-    let mut swap = 1;
-
     // dbg!(width_l, width_r);
 
     while tk.pow(2) <= width_l && width_l > 0 {
-        Pixel(Point::new(x, y), c1).draw(display)?;
+        Pixel(point, c1).draw(display)?;
 
         if error >= threshold {
-            x += xstep;
+            point += step.major;
             error += e_minor;
             tk += 2 * dy;
         }
 
         error += e_major;
-        y += ystep;
+        point += step.minor;
         tk += 2 * dx;
         q += 1;
     }
 
-    let mut y2 = y0;
-    let mut x2 = x0;
+    // let mut y2 = y0;
+    // let mut x2 = x0;
+    let mut point = Point::new(x0, y0);
     let mut error2 = -einit;
     let mut tk = winit;
 
     while tk.pow(2) <= width_r && width_r > 0 {
         if p > 0 && side == LineSide::Center {
-            Pixel(Point::new(x2, y2), c2).draw(display)?;
+            Pixel(point, c2).draw(display)?;
         }
 
         if error2 > threshold {
-            x2 -= xstep;
+            point -= step.major;
             error2 += e_minor;
             tk += 2 * dy;
         }
 
         error2 += e_major;
-        y2 -= ystep;
+        point -= step.minor;
         tk += 2 * dx;
         p += 1;
     }
@@ -131,18 +163,21 @@ fn x_varthick_line(
     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
     x0: i32,
     y0: i32,
-    dx: i32,
-    dy: i32,
-    xstep: i32,
-    ystep: i32,
-    pxstep: i32,
-    pystep: i32,
+    delta: MajorMinor<i32>,
+    step: MajorMinor<Point>,
+    pstep: MajorMinor<Point>,
     width: i32,
 ) -> Result<(), std::convert::Infallible> {
     let mut p_error = 0;
     let mut error = 0;
-    let mut y = y0;
-    let mut x = x0;
+    // let mut y = y0;
+    // let mut x = x0;
+
+    let mut point = Point::new(x0, y0);
+
+    let dx = delta.major.abs();
+    let dy = delta.minor.abs();
+
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
@@ -150,20 +185,19 @@ fn x_varthick_line(
 
     for p in 0..length {
         x_perpendicular(
-            display, x, y, dx, dy, pxstep, pystep, p_error, width, error, false,
+            display, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
         if error >= threshold {
-            y += ystep;
+            // y += ystep;
+            point += step.minor;
             error += e_minor;
             if p_error >= threshold {
                 x_perpendicular(
                     display,
-                    x,
-                    y,
-                    dx,
-                    dy,
-                    pxstep,
-                    pystep,
+                    point.x,
+                    point.y,
+                    delta,
+                    pstep,
                     p_error + e_minor + e_major,
                     width,
                     error,
@@ -174,7 +208,8 @@ fn x_varthick_line(
             p_error += e_major;
         }
         error += e_major;
-        x += xstep;
+        // x += xstep;
+        point += step.major;
     }
 
     Ok(())
@@ -291,8 +326,8 @@ struct LineDebug {
 
 impl App for LineDebug {
     type Color = Rgb565;
-    // const DISPLAY_SIZE: Size = Size::new(256, 256);
-    const DISPLAY_SIZE: Size = Size::new(64, 64);
+    const DISPLAY_SIZE: Size = Size::new(256, 256);
+    // const DISPLAY_SIZE: Size = Size::new(64, 64);
 
     fn new() -> Self {
         let end = Point::new(
@@ -320,115 +355,150 @@ impl App for LineDebug {
         display: &mut SimulatorDisplay<Self::Color>,
     ) -> Result<(), std::convert::Infallible> {
         let Point { x: x0, y: y0 } = self.start;
-        let Point { x: x1, y: y1 } = self.end;
+        // let Point { x: x1, y: y1 } = self.end;
 
-        let pxstep;
-        let pystep;
-        let mut xch = 0; // whether left and right get switched.
+        // // let pxstep;
+        // // let pystep;
+        // // let mut xch = 0; // whether left and right get switched.
 
-        let mut dx = x1 - x0;
-        let mut dy = y1 - y0;
+        // let mut dx = x1 - x0;
+        // let mut dy = y1 - y0;
 
         // let width = 2 * self.stroke_width as i32 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
         // let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
         let width = self.stroke_width as i32;
 
-        let mut xstep = 1;
-        let mut ystep = 1;
+        // let mut xstep = 1;
+        // let mut ystep = 1;
 
-        if dx < 0 {
-            dx = -dx;
-            xstep = -1;
-        }
-        if dy < 0 {
-            dy = -dy;
-            ystep = -1;
-        }
+        // if dx < 0 {
+        //     dx = -dx;
+        //     xstep = -1;
+        // }
+        // if dy < 0 {
+        //     dy = -dy;
+        //     ystep = -1;
+        // }
 
-        if dx == 0 {
-            xstep = 0;
-        }
-        if dy == 0 {
-            ystep = 0;
-        }
+        // if dx == 0 {
+        //     xstep = 0;
+        // }
+        // if dy == 0 {
+        //     ystep = 0;
+        // }
 
-        match (xstep, ystep) {
-            (-1, -1) => {
-                pystep = -1;
-                pxstep = 1;
-                xch = 1;
-            }
-            (-1, 0) => {
-                pystep = -1;
-                pxstep = 0;
-                xch = 1;
-            }
-            (-1, 1) => {
-                pystep = 1;
-                pxstep = 1;
-            }
-            (0, -1) => {
-                pystep = 0;
-                pxstep = -1;
-            }
-            (0, 0) => {
-                pystep = 0;
-                pxstep = 0;
-            }
-            (0, 1) => {
-                pystep = 0;
-                pxstep = 1;
-            }
-            (1, -1) => {
-                pystep = -1;
-                pxstep = -1;
-            }
-            (1, 0) => {
-                pystep = -1;
-                pxstep = 0;
-            }
-            (1, 1) => {
-                pystep = 1;
-                pxstep = -1;
-                xch = 1;
-            }
-            _ => unreachable!(),
-        }
+        // match (xstep, ystep) {
+        //     (-1, -1) => {
+        //         pystep = -1;
+        //         pxstep = 1;
+        //         xch = 1;
+        //     }
+        //     (-1, 0) => {
+        //         pystep = -1;
+        //         pxstep = 0;
+        //         xch = 1;
+        //     }
+        //     (-1, 1) => {
+        //         pystep = 1;
+        //         pxstep = 1;
+        //     }
+        //     (0, -1) => {
+        //         pystep = 0;
+        //         pxstep = -1;
+        //     }
+        //     (0, 0) => {
+        //         pystep = 0;
+        //         pxstep = 0;
+        //     }
+        //     (0, 1) => {
+        //         pystep = 0;
+        //         pxstep = 1;
+        //     }
+        //     (1, -1) => {
+        //         pystep = -1;
+        //         pxstep = -1;
+        //     }
+        //     (1, 0) => {
+        //         pystep = -1;
+        //         pxstep = 0;
+        //     }
+        //     (1, 1) => {
+        //         pystep = 1;
+        //         pxstep = -1;
+        //         xch = 1;
+        //     }
+        //     _ => unreachable!(),
+        // }
 
-        // TODO: xch or swap_sides
+        // // TODO: xch or swap_sides
 
-        let mut mock_display = MockDisplay::new();
+        let (delta, step, pstep) = {
+            let delta = self.end - self.start;
+
+            let direction = Point::new(
+                if delta.x >= 0 { 1 } else { -1 },
+                if delta.y >= 0 { 1 } else { -1 },
+            );
+
+            let perp_direction = {
+                let perp_delta = Point::new(delta.y, -delta.x);
+
+                Point::new(
+                    if perp_delta.x >= 0 { 1 } else { -1 },
+                    if perp_delta.y >= 0 { 1 } else { -1 },
+                )
+            };
+
+            // let delta = delta.abs();
+
+            // Determine major and minor directions.
+            if delta.y.abs() >= delta.x.abs() {
+                (
+                    MajorMinor::new(delta.y, delta.x),
+                    MajorMinor::new(direction.y_axis(), direction.x_axis()),
+                    MajorMinor::new(perp_direction.y_axis(), perp_direction.x_axis()),
+                )
+            } else {
+                (
+                    MajorMinor::new(delta.x, delta.y),
+                    MajorMinor::new(direction.x_axis(), direction.y_axis()),
+                    MajorMinor::new(perp_direction.x_axis(), perp_direction.y_axis()),
+                )
+            }
+        };
+
+        let mut mock_display: MockDisplay<Rgb565> = MockDisplay::new();
         // mock_display.set_allow_out_of_bounds_drawing(true);
 
-        if dx > dy {
-            x_varthick_line(display, x0, y0, dx, dy, xstep, ystep, pxstep, pystep, width)?;
-            x_varthick_line(
-                &mut mock_display,
-                x0,
-                y0,
-                dx,
-                dy,
-                xstep,
-                ystep,
-                pxstep,
-                pystep,
-                width,
-            )?;
-        } else {
-            y_varthick_line(display, x0, y0, dx, dy, xstep, ystep, pxstep, pystep, width)?;
-            y_varthick_line(
-                &mut mock_display,
-                x0,
-                y0,
-                dx,
-                dy,
-                xstep,
-                ystep,
-                pxstep,
-                pystep,
-                width,
-            )?;
-        }
+        // if delta.x > delta.y {
+        x_varthick_line(display, x0, y0, delta, step, pstep, width)?;
+        // x_varthick_line(
+        //     &mut mock_display,
+        //     x0,
+        //     y0,
+        //     dx,
+        //     dy,
+        //     xstep,
+        //     ystep,
+        //     pxstep,
+        //     pystep,
+        //     width,
+        // )?;
+        // } else {
+        //     y_varthick_line(display, x0, y0, dx, dy, xstep, ystep, pxstep, pystep, width)?;
+        //     // y_varthick_line(
+        //     //     &mut mock_display,
+        //     //     x0,
+        //     //     y0,
+        //     //     dx,
+        //     //     dy,
+        //     //     xstep,
+        //     //     ystep,
+        //     //     pxstep,
+        //     //     pystep,
+        //     //     width,
+        //     // )?;
+        // }
 
         // thin_octant1(display, x0, y0, dx, dy)?;
         // thick_octant1(display, x0, y0, x1, y1, 10)?;
