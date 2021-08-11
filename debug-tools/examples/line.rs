@@ -9,6 +9,34 @@ use embedded_graphics::{
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum LineSide {
+    Left,
+    Center,
+    Right,
+}
+
+impl LineSide {
+    fn widths(self, width: i32) -> (i32, i32) {
+        match width {
+            // 0 => (0, 0),
+            width => {
+                match self {
+                    Self::Left => ((width * 2).saturating_sub(1), 0),
+                    Self::Center => {
+                        let width = width.saturating_sub(1);
+
+                        // Right-side bias for odd width lines. Move mod2 to first item to bias to
+                        // the left.
+                        (width, width + (width % 2))
+                    }
+                    Self::Right => (0, (width * 2).saturating_sub(1)),
+                }
+            }
+        }
+    }
+}
+
 fn x_perpendicular(
     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
     x0: i32,
@@ -22,6 +50,14 @@ fn x_perpendicular(
     winit: i32,
     extra: bool,
 ) -> Result<(), std::convert::Infallible> {
+    if width == 0 {
+        return Ok(());
+    }
+
+    if width == 1 {
+        return Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display);
+    }
+
     let mut threshold = dx - 2 * dy;
     let mut E_diag = -2 * dx;
     let mut E_square = 2 * dy;
@@ -44,12 +80,15 @@ fn x_perpendicular(
     let mut error2 = -einit;
     // let mut tk2 = dx + dy + winit;
 
-    let width = width - 1;
+    // let width = width.saturating_sub(1);
 
-    // let width = width.pow(2) * (dx * dx + dy * dy);
-    let width_l = width;
-    // Put extras on right side
-    let width_r = width + (width % 2);
+    // let width_l = width;
+    // // Put extras on right side. Move the %2 to width_l to place on left instead
+    // let width_r = width + (width % 2);
+
+    let side = LineSide::Center;
+
+    let (width_l, width_r) = side.widths(width);
 
     let width_l = width_l.pow(2) * (dx * dx + dy * dy);
     let width_r = width_r.pow(2) * (dx * dx + dy * dy);
@@ -62,7 +101,9 @@ fn x_perpendicular(
 
     let mut swap = 1;
 
-    while tk.pow(2) <= width_l {
+    // dbg!(width_l, width_r);
+
+    while tk.pow(2) <= width_l && width_l > 0 {
         Pixel(Point::new(x, y), c1).draw(display)?;
 
         if error >= threshold {
@@ -82,9 +123,9 @@ fn x_perpendicular(
     let mut error2 = -einit;
     let mut tk = winit;
 
-    while tk.pow(2) <= width_r {
-        if p > 0 {
-            Pixel(Point::new(x2, y2), Rgb565::GREEN).draw(display)?;
+    while tk.pow(2) <= width_r && width_r > 0 {
+        if p > 0 && side == LineSide::Center {
+            Pixel(Point::new(x2, y2), c2).draw(display)?;
         }
 
         if error2 > threshold {
@@ -98,46 +139,6 @@ fn x_perpendicular(
         tk += 2 * dx;
         p += 1;
     }
-
-    // while tk.pow(2) <= width_l || tk2.pow(2) <= width_r {
-    //     if swap == 1 && tk.pow(2) <= width {
-    //         Pixel(Point::new(x, y), c1).draw(display)?;
-
-    //         if error >= threshold {
-    //             x += xstep;
-    //             error += E_diag;
-    //             tk += 2 * dy;
-    //         }
-
-    //         error += E_square;
-    //         y += ystep;
-    //         tk += 2 * dx;
-    //         q += 1;
-    //     } else {
-    //         if p > 0 {
-    //             Pixel(Point::new(x2, y2), c2).draw(display)?;
-    //         }
-
-    //         if error2 > threshold {
-    //             x2 -= xstep;
-    //             error2 += E_diag;
-    //             tk2 += 2 * dy;
-    //         }
-
-    //         error2 += E_square;
-    //         y2 -= ystep;
-    //         tk2 += 2 * dx;
-
-    //         p += 1;
-    //     }
-
-    //     swap *= -1;
-    // }
-
-    // // we need this for very thin lines
-    // if q == 0 && p < 2 {
-    //     Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display)?;
-    // }
 
     Ok(())
 }
@@ -244,27 +245,27 @@ fn y_perpendicular(
     let mut error = einit;
     let mut tk = dx + dy - winit;
 
-    while tk <= width {
-        if p > 0 {
-            Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
-        }
+    // while tk <= width {
+    //     if p > 0 {
+    //         Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
+    //     }
 
-        if error >= threshold {
-            y -= ystep;
-            error += E_diag;
-            tk += 2 * dx;
-        }
+    //     if error >= threshold {
+    //         y -= ystep;
+    //         error += E_diag;
+    //         tk += 2 * dx;
+    //     }
 
-        error += E_square;
-        x -= xstep;
-        tk += 2 * dy;
-        p += 1;
-    }
+    //     error += E_square;
+    //     x -= xstep;
+    //     tk += 2 * dy;
+    //     p += 1;
+    // }
 
-    // we need this for very thin lines
-    if q == 0 && p < 2 {
-        Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display)?;
-    }
+    // // we need this for very thin lines
+    // if q == 0 && p < 2 {
+    //     Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display)?;
+    // }
 
     Ok(())
 }
@@ -328,17 +329,18 @@ struct LineDebug {
 
 impl App for LineDebug {
     type Color = Rgb565;
-    const DISPLAY_SIZE: Size = Size::new(256, 256);
+    // const DISPLAY_SIZE: Size = Size::new(256, 256);
+    const DISPLAY_SIZE: Size = Size::new(64, 64);
 
     fn new() -> Self {
-        let start = Point::new(
+        let end = Point::new(
             Self::DISPLAY_SIZE.width as i32 / 2,
             Self::DISPLAY_SIZE.height as i32 / 2,
         );
         Self {
-            start,
-            // end: start + Point::new(25, 27),
-            end: start + Point::new(100, 0),
+            start: end + Point::new(10, 15),
+            end,
+            // end: start + Point::new(100, 0),
             stroke_width: 10,
         }
     }
@@ -434,7 +436,7 @@ impl App for LineDebug {
         // TODO: xch or swap_sides
 
         let mut mock_display = MockDisplay::new();
-        mock_display.set_allow_out_of_bounds_drawing(true);
+        // mock_display.set_allow_out_of_bounds_drawing(true);
 
         if dx > dy {
             x_varthick_line(display, x0, y0, dx, dy, xstep, ystep, pxstep, pystep, width)?;
