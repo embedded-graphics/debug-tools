@@ -58,33 +58,17 @@ fn x_perpendicular(
         return Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display);
     }
 
-    let mut threshold = dx - 2 * dy;
-    let mut E_diag = -2 * dx;
-    let mut E_square = 2 * dy;
+    let threshold = dx - 2 * dy;
+    let e_minor = -2 * dx;
+    let e_major = 2 * dy;
     let mut p = 0;
     let mut q = 0;
 
     let mut y = y0;
     let mut x = x0;
     let mut error = einit;
-    // let mut tk = dx + dy - winit;
-
-    // let mut tk = (dx + dy) / 2;
-    // let mut tk = winit;
 
     let mut tk = -winit;
-    let mut tk2 = winit;
-
-    let mut y2 = y0;
-    let mut x2 = x0;
-    let mut error2 = -einit;
-    // let mut tk2 = dx + dy + winit;
-
-    // let width = width.saturating_sub(1);
-
-    // let width_l = width;
-    // // Put extras on right side. Move the %2 to width_l to place on left instead
-    // let width_r = width + (width % 2);
 
     let side = LineSide::Center;
 
@@ -108,11 +92,11 @@ fn x_perpendicular(
 
         if error >= threshold {
             x += xstep;
-            error += E_diag;
+            error += e_minor;
             tk += 2 * dy;
         }
 
-        error += E_square;
+        error += e_major;
         y += ystep;
         tk += 2 * dx;
         q += 1;
@@ -130,11 +114,11 @@ fn x_perpendicular(
 
         if error2 > threshold {
             x2 -= xstep;
-            error2 += E_diag;
+            error2 += e_minor;
             tk += 2 * dy;
         }
 
-        error2 += E_square;
+        error2 += e_major;
         y2 -= ystep;
         tk += 2 * dx;
         p += 1;
@@ -159,10 +143,10 @@ fn x_varthick_line(
     let mut error = 0;
     let mut y = y0;
     let mut x = x0;
-    let mut threshold = dx - 2 * dy;
-    let mut E_diag = -2 * dx;
-    let mut E_square = 2 * dy;
-    let mut length = dx + 1;
+    let threshold = dx - 2 * dy;
+    let e_minor = -2 * dx;
+    let e_major = 2 * dy;
+    let length = dx + 1;
 
     for p in 0..length {
         x_perpendicular(
@@ -170,7 +154,7 @@ fn x_varthick_line(
         )?;
         if error >= threshold {
             y += ystep;
-            error += E_diag;
+            error += e_minor;
             if p_error >= threshold {
                 x_perpendicular(
                     display,
@@ -180,16 +164,16 @@ fn x_varthick_line(
                     dy,
                     pxstep,
                     pystep,
-                    p_error + E_diag + E_square,
+                    p_error + e_minor + e_major,
                     width,
                     error,
                     true,
                 )?;
-                p_error += E_diag;
+                p_error += e_minor;
             }
-            p_error += E_square;
+            p_error += e_major;
         }
-        error += E_square;
+        error += e_major;
         x += xstep;
     }
 
@@ -214,11 +198,11 @@ fn y_perpendicular(
     width: i32,
     winit: i32,
 ) -> Result<(), std::convert::Infallible> {
-    let mut p = 0;
+    let p = 0;
     let mut q = 0;
-    let mut threshold = dy - 2 * dx;
-    let mut E_diag = -2 * dy;
-    let mut E_square = 2 * dx;
+    let threshold = dy - 2 * dx;
+    let e_minor = -2 * dy;
+    let e_major = 2 * dx;
 
     let mut y = y0;
     let mut x = x0;
@@ -230,42 +214,20 @@ fn y_perpendicular(
 
         if error > threshold {
             y += ystep;
-            error += E_diag;
+            error += e_minor;
             tk += 2 * dx;
         }
 
-        error += E_square;
+        error += e_major;
         x += xstep;
         tk += 2 * dy;
         q += 1;
     }
 
-    let mut y = y0;
-    let mut x = x0;
-    let mut error = einit;
-    let mut tk = dx + dy - winit;
-
-    // while tk <= width {
-    //     if p > 0 {
-    //         Pixel(Point::new(x, y), Rgb565::GREEN).draw(display)?;
-    //     }
-
-    //     if error >= threshold {
-    //         y -= ystep;
-    //         error += E_diag;
-    //         tk += 2 * dx;
-    //     }
-
-    //     error += E_square;
-    //     x -= xstep;
-    //     tk += 2 * dy;
-    //     p += 1;
-    // }
-
-    // // we need this for very thin lines
-    // if q == 0 && p < 2 {
-    //     Pixel(Point::new(x0, y0), Rgb565::YELLOW).draw(display)?;
-    // }
+    let y = y0;
+    let x = x0;
+    let error = einit;
+    let tk = dx + dy - winit;
 
     Ok(())
 }
@@ -287,8 +249,8 @@ fn y_varthick_line(
     let mut y = y0;
     let mut x = x0;
     let mut threshold = dy - 2 * dx;
-    let mut E_diag = -2 * dy;
-    let mut E_square = 2 * dx;
+    let mut e_minor = -2 * dy;
+    let mut e_major = 2 * dx;
     let mut length = dy + 1;
 
     for p in 0..length {
@@ -296,7 +258,7 @@ fn y_varthick_line(
 
         if error >= threshold {
             x += xstep;
-            error += E_diag;
+            error += e_minor;
             if p_error >= threshold {
                 y_perpendicular(
                     display,
@@ -306,15 +268,15 @@ fn y_varthick_line(
                     dy,
                     pxstep,
                     pystep,
-                    p_error + E_diag + E_square,
+                    p_error + e_minor + e_major,
                     width,
                     error,
                 )?;
-                p_error += E_diag;
+                p_error += e_minor;
             }
-            p_error += E_square;
+            p_error += e_major;
         }
-        error += E_square;
+        error += e_major;
         y += ystep;
     }
 
