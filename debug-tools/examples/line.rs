@@ -19,7 +19,6 @@ enum LineSide {
 impl LineSide {
     fn widths(self, width: i32) -> (i32, i32) {
         match width {
-            // 0 => (0, 0),
             width => {
                 match self {
                     Self::Left => ((width * 2).saturating_sub(1), 0),
@@ -30,7 +29,7 @@ impl LineSide {
                         // the left.
                         (width, width + (width % 2))
                     }
-                    Self::Right => (0, (width * 2).saturating_sub(1)),
+                    Self::Right => ((width * 2).saturating_sub(1), 0),
                 }
             }
         }
@@ -53,7 +52,6 @@ fn x_perpendicular(
     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
     x0: i32,
     y0: i32,
-
     delta: MajorMinor<i32>,
     mut step: MajorMinor<Point>,
     einit: i32,
@@ -74,9 +72,7 @@ fn x_perpendicular(
     let dx = delta.major;
     let dy = delta.minor;
 
-    dbg!(step.major, step.minor);
-
-    let sign = match (step.major, step.minor) {
+    let mut sign = match (step.major, step.minor) {
         (Point { x: -1, y: 0 }, Point { x: 0, y: 1 }) => -1,
         (Point { x: 0, y: -1 }, Point { x: -1, y: 0 }) => -1,
         (Point { x: 1, y: 0 }, Point { x: 0, y: -1 }) => -1,
@@ -84,8 +80,10 @@ fn x_perpendicular(
         _ => 1,
     };
 
-    step.major *= sign;
-    step.minor *= sign;
+    if sign == -1 {
+        step.major *= -1;
+        step.minor *= -1;
+    }
 
     let dx = dx.abs();
     let dy = dy.abs();
@@ -96,16 +94,20 @@ fn x_perpendicular(
     let mut p = 0;
     let mut q = 0;
 
-    // let mut y = y0;
-    // let mut x = x0;
-
-    // Swap signs in some conditions
     let mut error = einit;
     let mut tk = -winit;
 
     let side = LineSide::Center;
 
-    let (width_l, width_r) = side.widths(width);
+    let (mut width_l, mut width_r) = side.widths(width);
+
+    if sign == -1 {
+        core::mem::swap(&mut width_l, &mut width_r);
+    }
+
+    if side == LineSide::Right {
+        core::mem::swap(&mut width_l, &mut width_r);
+    }
 
     let width_l = width_l.pow(2) * (dx * dx + dy * dy);
     let width_r = width_r.pow(2) * (dx * dx + dy * dy);
@@ -115,8 +117,6 @@ fn x_perpendicular(
     } else {
         (Rgb565::CSS_CORNFLOWER_BLUE, Rgb565::YELLOW)
     };
-
-    // dbg!(width_l, width_r);
 
     while tk.pow(2) <= width_l && width_l > 0 {
         Pixel(point, c1).draw(display)?;
@@ -133,24 +133,22 @@ fn x_perpendicular(
         q += 1;
     }
 
-    // let mut y2 = y0;
-    // let mut x2 = x0;
     let mut point = Point::new(x0, y0);
-    let mut error2 = -einit;
+    let mut error = -einit;
     let mut tk = winit;
 
     while tk.pow(2) <= width_r && width_r > 0 {
-        if p > 0 && side == LineSide::Center {
+        if p > 0 {
             Pixel(point, c2).draw(display)?;
         }
 
-        if error2 > threshold {
+        if error > threshold {
             point -= step.major;
-            error2 += e_minor;
+            error += e_minor;
             tk += 2 * dy;
         }
 
-        error2 += e_major;
+        error += e_major;
         point -= step.minor;
         tk += 2 * dx;
         p += 1;
@@ -215,109 +213,6 @@ fn x_varthick_line(
     Ok(())
 }
 
-/***********************************************************************
- *                                                                     *
- *                            Y BASED LINES                            *
- *                                                                     *
- ***********************************************************************/
-
-fn y_perpendicular(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    x0: i32,
-    y0: i32,
-    dx: i32,
-    dy: i32,
-    xstep: i32,
-    ystep: i32,
-    einit: i32,
-    width: i32,
-    winit: i32,
-) -> Result<(), std::convert::Infallible> {
-    let p = 0;
-    let mut q = 0;
-    let threshold = dy - 2 * dx;
-    let e_minor = -2 * dy;
-    let e_major = 2 * dx;
-
-    let mut y = y0;
-    let mut x = x0;
-    let mut error = -einit;
-    let mut tk = dx + dy + winit;
-
-    while tk <= width {
-        Pixel(Point::new(x, y), Rgb565::RED).draw(display)?;
-
-        if error > threshold {
-            y += ystep;
-            error += e_minor;
-            tk += 2 * dx;
-        }
-
-        error += e_major;
-        x += xstep;
-        tk += 2 * dy;
-        q += 1;
-    }
-
-    let y = y0;
-    let x = x0;
-    let error = einit;
-    let tk = dx + dy - winit;
-
-    Ok(())
-}
-
-fn y_varthick_line(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    x0: i32,
-    y0: i32,
-    dx: i32,
-    dy: i32,
-    xstep: i32,
-    ystep: i32,
-    pxstep: i32,
-    pystep: i32,
-    width: i32,
-) -> Result<(), std::convert::Infallible> {
-    let mut p_error = 0;
-    let mut error = 0;
-    let mut y = y0;
-    let mut x = x0;
-    let mut threshold = dy - 2 * dx;
-    let mut e_minor = -2 * dy;
-    let mut e_major = 2 * dx;
-    let mut length = dy + 1;
-
-    for p in 0..length {
-        y_perpendicular(display, x, y, dx, dy, pxstep, pystep, p_error, width, error)?;
-
-        if error >= threshold {
-            x += xstep;
-            error += e_minor;
-            if p_error >= threshold {
-                y_perpendicular(
-                    display,
-                    x,
-                    y,
-                    dx,
-                    dy,
-                    pxstep,
-                    pystep,
-                    p_error + e_minor + e_major,
-                    width,
-                    error,
-                )?;
-                p_error += e_minor;
-            }
-            p_error += e_major;
-        }
-        error += e_major;
-        y += ystep;
-    }
-
-    Ok(())
-}
-
 struct LineDebug {
     start: Point,
     end: Point,
@@ -326,8 +221,8 @@ struct LineDebug {
 
 impl App for LineDebug {
     type Color = Rgb565;
-    const DISPLAY_SIZE: Size = Size::new(256, 256);
-    // const DISPLAY_SIZE: Size = Size::new(64, 64);
+    // const DISPLAY_SIZE: Size = Size::new(256, 256);
+    const DISPLAY_SIZE: Size = Size::new(64, 64);
 
     fn new() -> Self {
         let end = Point::new(
@@ -355,82 +250,10 @@ impl App for LineDebug {
         display: &mut SimulatorDisplay<Self::Color>,
     ) -> Result<(), std::convert::Infallible> {
         let Point { x: x0, y: y0 } = self.start;
-        // let Point { x: x1, y: y1 } = self.end;
-
-        // // let pxstep;
-        // // let pystep;
-        // // let mut xch = 0; // whether left and right get switched.
-
-        // let mut dx = x1 - x0;
-        // let mut dy = y1 - y0;
 
         // let width = 2 * self.stroke_width as i32 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
         // let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
         let width = self.stroke_width as i32;
-
-        // let mut xstep = 1;
-        // let mut ystep = 1;
-
-        // if dx < 0 {
-        //     dx = -dx;
-        //     xstep = -1;
-        // }
-        // if dy < 0 {
-        //     dy = -dy;
-        //     ystep = -1;
-        // }
-
-        // if dx == 0 {
-        //     xstep = 0;
-        // }
-        // if dy == 0 {
-        //     ystep = 0;
-        // }
-
-        // match (xstep, ystep) {
-        //     (-1, -1) => {
-        //         pystep = -1;
-        //         pxstep = 1;
-        //         xch = 1;
-        //     }
-        //     (-1, 0) => {
-        //         pystep = -1;
-        //         pxstep = 0;
-        //         xch = 1;
-        //     }
-        //     (-1, 1) => {
-        //         pystep = 1;
-        //         pxstep = 1;
-        //     }
-        //     (0, -1) => {
-        //         pystep = 0;
-        //         pxstep = -1;
-        //     }
-        //     (0, 0) => {
-        //         pystep = 0;
-        //         pxstep = 0;
-        //     }
-        //     (0, 1) => {
-        //         pystep = 0;
-        //         pxstep = 1;
-        //     }
-        //     (1, -1) => {
-        //         pystep = -1;
-        //         pxstep = -1;
-        //     }
-        //     (1, 0) => {
-        //         pystep = -1;
-        //         pxstep = 0;
-        //     }
-        //     (1, 1) => {
-        //         pystep = 1;
-        //         pxstep = -1;
-        //         xch = 1;
-        //     }
-        //     _ => unreachable!(),
-        // }
-
-        // // TODO: xch or swap_sides
 
         let (delta, step, pstep) = {
             let delta = self.end - self.start;
@@ -470,38 +293,8 @@ impl App for LineDebug {
         let mut mock_display: MockDisplay<Rgb565> = MockDisplay::new();
         // mock_display.set_allow_out_of_bounds_drawing(true);
 
-        // if delta.x > delta.y {
         x_varthick_line(display, x0, y0, delta, step, pstep, width)?;
-        // x_varthick_line(
-        //     &mut mock_display,
-        //     x0,
-        //     y0,
-        //     dx,
-        //     dy,
-        //     xstep,
-        //     ystep,
-        //     pxstep,
-        //     pystep,
-        //     width,
-        // )?;
-        // } else {
-        //     y_varthick_line(display, x0, y0, dx, dy, xstep, ystep, pxstep, pystep, width)?;
-        //     // y_varthick_line(
-        //     //     &mut mock_display,
-        //     //     x0,
-        //     //     y0,
-        //     //     dx,
-        //     //     dy,
-        //     //     xstep,
-        //     //     ystep,
-        //     //     pxstep,
-        //     //     pystep,
-        //     //     width,
-        //     // )?;
-        // }
-
-        // thin_octant1(display, x0, y0, dx, dy)?;
-        // thick_octant1(display, x0, y0, x1, y1, 10)?;
+        x_varthick_line(&mut mock_display, x0, y0, delta, step, pstep, width)?;
 
         Ok(())
 
