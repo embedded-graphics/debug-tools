@@ -1,11 +1,4 @@
-use std::convert::TryFrom;
-
-use embedded_graphics::{
-    mock_display::MockDisplay,
-    pixelcolor::Rgb565,
-    prelude::*,
-    primitives::{Line, PrimitiveStyle},
-};
+use embedded_graphics::{mock_display::MockDisplay, pixelcolor::Rgb565, prelude::*};
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
 
@@ -91,8 +84,6 @@ fn x_perpendicular(
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    let mut p = 0;
-    let mut q = 0;
 
     let mut error = einit;
     let mut tk = -winit;
@@ -130,12 +121,12 @@ fn x_perpendicular(
         error += e_major;
         point += step.minor;
         tk += 2 * dx;
-        q += 1;
     }
 
     let mut point = Point::new(x0, y0);
     let mut error = -einit;
     let mut tk = winit;
+    let mut p = 0;
 
     while tk.pow(2) <= width_r && width_r > 0 {
         if p > 0 {
@@ -168,9 +159,6 @@ fn x_varthick_line(
 ) -> Result<(), std::convert::Infallible> {
     let mut p_error = 0;
     let mut error = 0;
-    // let mut y = y0;
-    // let mut x = x0;
-
     let mut point = Point::new(x0, y0);
 
     let dx = delta.major.abs();
@@ -181,14 +169,15 @@ fn x_varthick_line(
     let e_major = 2 * dy;
     let length = dx + 1;
 
-    for p in 0..length {
+    for _ in 0..length {
         x_perpendicular(
             display, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
-        if error >= threshold {
-            // y += ystep;
+
+        if error > threshold {
             point += step.minor;
             error += e_minor;
+
             if p_error >= threshold {
                 x_perpendicular(
                     display,
@@ -201,12 +190,14 @@ fn x_varthick_line(
                     error,
                     true,
                 )?;
+
                 p_error += e_minor;
             }
+
             p_error += e_major;
         }
+
         error += e_major;
-        // x += xstep;
         point += step.major;
     }
 
@@ -221,8 +212,8 @@ struct LineDebug {
 
 impl App for LineDebug {
     type Color = Rgb565;
-    // const DISPLAY_SIZE: Size = Size::new(256, 256);
-    const DISPLAY_SIZE: Size = Size::new(64, 64);
+    const DISPLAY_SIZE: Size = Size::new(256, 256);
+    // const DISPLAY_SIZE: Size = Size::new(64, 64);
 
     fn new() -> Self {
         let end = Point::new(
@@ -294,7 +285,7 @@ impl App for LineDebug {
         // mock_display.set_allow_out_of_bounds_drawing(true);
 
         x_varthick_line(display, x0, y0, delta, step, pstep, width)?;
-        x_varthick_line(&mut mock_display, x0, y0, delta, step, pstep, width)?;
+        // x_varthick_line(&mut mock_display, x0, y0, delta, step, pstep, width)?;
 
         Ok(())
 
