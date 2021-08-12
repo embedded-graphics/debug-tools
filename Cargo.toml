@@ -3,3 +3,6 @@ members = [
     "framework",
     "debug-tools",
 ]
+
+[patch.crates-io]
+embedded-graphics = { path = "../embedded-graphics" }
