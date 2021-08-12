@@ -1,4 +1,9 @@
-use embedded_graphics::{mock_display::MockDisplay, pixelcolor::Rgb565, prelude::*};
+use embedded_graphics::{
+    mock_display::MockDisplay,
+    pixelcolor::Rgb565,
+    prelude::*,
+    primitives::{Line, PrimitiveStyle},
+};
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
 
@@ -109,6 +114,8 @@ fn x_perpendicular(
         (Rgb565::CSS_CORNFLOWER_BLUE, Rgb565::YELLOW)
     };
 
+    // let (c1, c2) = (Rgb565::GREEN, Rgb565::GREEN);
+
     while tk.pow(2) <= width_l && width_l > 0 {
         Pixel(point, c1).draw(display)?;
 
@@ -121,6 +128,25 @@ fn x_perpendicular(
         error += e_major;
         point += step.minor;
         tk += 2 * dx;
+
+        // Antialiasing
+        {
+            let thing = tk.pow(2) as f32 / width_l as f32;
+
+            if thing >= 1.0 {
+                let fract = 1.0 - thing.fract();
+
+                Pixel(
+                    point,
+                    Rgb565::new(
+                        (c1.r() as f32 * fract) as u8,
+                        (c1.g() as f32 * fract) as u8,
+                        (c1.b() as f32 * fract) as u8,
+                    ),
+                )
+                .draw(display)?;
+            }
+        }
     }
 
     let mut point = Point::new(x0, y0);
@@ -143,6 +169,25 @@ fn x_perpendicular(
         point -= step.minor;
         tk += 2 * dx;
         p += 1;
+
+        // Antialiasing
+        {
+            let thing = tk.pow(2) as f32 / width_r as f32;
+
+            if thing > 1.0 {
+                let fract = 1.0 - thing.fract();
+
+                Pixel(
+                    point,
+                    Rgb565::new(
+                        (c2.r() as f32 * fract) as u8,
+                        (c2.g() as f32 * fract) as u8,
+                        (c2.b() as f32 * fract) as u8,
+                    ),
+                )
+                .draw(display)?;
+            }
+        }
     }
 
     Ok(())
@@ -174,6 +219,8 @@ fn x_varthick_line(
             display, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
 
+        Pixel(point, Rgb565::BLACK).draw(display)?;
+
         if error > threshold {
             point += step.minor;
             error += e_minor;
@@ -191,6 +238,8 @@ fn x_varthick_line(
                         error,
                         true,
                     )?;
+
+                    Pixel(point, Rgb565::BLACK).draw(display)?;
                 }
 
                 p_error += e_minor;
@@ -289,14 +338,14 @@ impl App for LineDebug {
         x_varthick_line(display, x0, y0, delta, step, pstep, width)?;
         // x_varthick_line(&mut mock_display, x0, y0, delta, step, pstep, width)?;
 
-        Ok(())
-
         // Line::new(self.start, self.end)
         //     .into_styled(PrimitiveStyle::with_stroke(
         //         Rgb565::GREEN,
         //         self.stroke_width,
         //     ))
-        //     .draw(display)
+        //     .draw(display)?;
+
+        Ok(())
     }
 }
 
