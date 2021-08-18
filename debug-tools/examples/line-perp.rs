@@ -114,10 +114,22 @@ fn x_perpendicular(
         (Rgb565::CSS_CORNFLOWER_BLUE, Rgb565::YELLOW)
     };
 
-    // let (c1, c2) = (Rgb565::GREEN, Rgb565::GREEN);
+    let (c1, c2) = (Rgb565::GREEN, Rgb565::GREEN);
 
-    while tk.pow(2) <= width_l && width_l > 0 {
-        Pixel(point, c1).draw(display)?;
+    while tk.pow(2) <= width_l + (tk * 2 * delta.major) && width_l > 0 {
+        let thing = tk.pow(2) as f32 / width_l as f32;
+        let fract = 1.0 - thing;
+        dbg!(fract);
+
+        Pixel(
+            point,
+            Rgb565::new(
+                (c1.r() as f32 * fract) as u8,
+                (c1.g() as f32 * fract) as u8,
+                (c1.b() as f32 * fract) as u8,
+            ),
+        )
+        .draw(display)?;
 
         if error >= threshold {
             point += step.major;
@@ -129,24 +141,24 @@ fn x_perpendicular(
         point += step.minor;
         tk += 2 * dx;
 
-        // Antialiasing
-        {
-            let thing = tk.pow(2) as f32 / width_l as f32;
+        // // Antialiasing
+        // {
+        //     let thing = tk.pow(2) as f32 / width_l as f32;
 
-            if thing >= 1.0 {
-                let fract = 1.0 - thing.fract();
+        //     if thing >= 1.0 {
+        //         let fract = 1.0 - thing.fract();
 
-                Pixel(
-                    point,
-                    Rgb565::new(
-                        (c1.r() as f32 * fract) as u8,
-                        (c1.g() as f32 * fract) as u8,
-                        (c1.b() as f32 * fract) as u8,
-                    ),
-                )
-                .draw(display)?;
-            }
-        }
+        //         Pixel(
+        //             point,
+        //             Rgb565::new(
+        //                 (c1.r() as f32 * fract) as u8,
+        //                 (c1.g() as f32 * fract) as u8,
+        //                 (c1.b() as f32 * fract) as u8,
+        //             ),
+        //         )
+        //         .draw(display)?;
+        //     }
+        // }
     }
 
     let mut point = Point::new(x0, y0);
@@ -219,7 +231,7 @@ fn x_varthick_line(
             display, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
 
-        Pixel(point, Rgb565::BLACK).draw(display)?;
+        Pixel(point, Rgb565::WHITE).draw(display)?;
 
         if error > threshold {
             point += step.minor;
@@ -263,7 +275,7 @@ struct LineDebug {
 
 impl App for LineDebug {
     type Color = Rgb565;
-    const DISPLAY_SIZE: Size = Size::new(256, 256);
+    const DISPLAY_SIZE: Size = Size::new(200, 200);
     // const DISPLAY_SIZE: Size = Size::new(64, 64);
 
     fn new() -> Self {
@@ -338,19 +350,19 @@ impl App for LineDebug {
         x_varthick_line(display, x0, y0, delta, step, pstep, width)?;
         // x_varthick_line(&mut mock_display, x0, y0, delta, step, pstep, width)?;
 
-        // Line::new(self.start, self.end)
-        //     .into_styled(PrimitiveStyle::with_stroke(
-        //         Rgb565::GREEN,
-        //         self.stroke_width,
-        //     ))
-        //     .draw(display)?;
+        Line::new(self.start, self.end)
+            .into_styled(PrimitiveStyle::with_stroke(
+                Rgb565::GREEN,
+                self.stroke_width,
+            ))
+            .draw(&mut display.translated(Point::new(40, 40)))?;
 
         Ok(())
     }
 }
 
 fn main() {
-    let settings = OutputSettingsBuilder::new().scale(3).build();
+    let settings = OutputSettingsBuilder::new().scale(5).build();
     let window = Window::new("Line debugger", &settings);
 
     LineDebug::run(window);
