@@ -116,10 +116,13 @@ fn x_perpendicular(
 
     let (c1, c2) = (Rgb565::GREEN, Rgb565::GREEN);
 
-    while tk.pow(2) <= width_l + (tk * 2 * delta.major) && width_l > 0 {
-        let thing = tk.pow(2) as f32 / width_l as f32;
-        let fract = 1.0 - thing;
-        dbg!(fract);
+    while tk.pow(2) <= width_l + tk.pow(2) && width_l > 0 {
+        let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
+        let fract = if tk.pow(2) > width_l {
+            1.0 - thing
+        } else {
+            1.0
+        };
 
         Pixel(
             point,
@@ -140,25 +143,6 @@ fn x_perpendicular(
         error += e_major;
         point += step.minor;
         tk += 2 * dx;
-
-        // // Antialiasing
-        // {
-        //     let thing = tk.pow(2) as f32 / width_l as f32;
-
-        //     if thing >= 1.0 {
-        //         let fract = 1.0 - thing.fract();
-
-        //         Pixel(
-        //             point,
-        //             Rgb565::new(
-        //                 (c1.r() as f32 * fract) as u8,
-        //                 (c1.g() as f32 * fract) as u8,
-        //                 (c1.b() as f32 * fract) as u8,
-        //             ),
-        //         )
-        //         .draw(display)?;
-        //     }
-        // }
     }
 
     let mut point = Point::new(x0, y0);
@@ -166,9 +150,24 @@ fn x_perpendicular(
     let mut tk = winit;
     let mut p = 0;
 
-    while tk.pow(2) <= width_r && width_r > 0 {
+    while tk.pow(2) <= width_r + tk.pow(2) && width_r > 0 {
         if p > 0 {
-            Pixel(point, c2).draw(display)?;
+            let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
+            let fract = if tk.pow(2) > width_l {
+                1.0 - thing
+            } else {
+                1.0
+            };
+
+            Pixel(
+                point,
+                Rgb565::new(
+                    (c1.r() as f32 * fract) as u8,
+                    (c1.g() as f32 * fract) as u8,
+                    (c1.b() as f32 * fract) as u8,
+                ),
+            )
+            .draw(display)?;
         }
 
         if error > threshold {
@@ -181,25 +180,6 @@ fn x_perpendicular(
         point -= step.minor;
         tk += 2 * dx;
         p += 1;
-
-        // Antialiasing
-        {
-            let thing = tk.pow(2) as f32 / width_r as f32;
-
-            if thing > 1.0 {
-                let fract = 1.0 - thing.fract();
-
-                Pixel(
-                    point,
-                    Rgb565::new(
-                        (c2.r() as f32 * fract) as u8,
-                        (c2.g() as f32 * fract) as u8,
-                        (c2.b() as f32 * fract) as u8,
-                    ),
-                )
-                .draw(display)?;
-            }
-        }
     }
 
     Ok(())
@@ -231,7 +211,7 @@ fn x_varthick_line(
             display, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
 
-        Pixel(point, Rgb565::WHITE).draw(display)?;
+        // Pixel(point, Rgb565::WHITE).draw(display)?;
 
         if error > threshold {
             point += step.minor;
@@ -251,7 +231,7 @@ fn x_varthick_line(
                         true,
                     )?;
 
-                    Pixel(point, Rgb565::BLACK).draw(display)?;
+                    // Pixel(point, Rgb565::BLACK).draw(display)?;
                 }
 
                 p_error += e_minor;
