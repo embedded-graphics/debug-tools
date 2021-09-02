@@ -46,7 +46,7 @@ impl<T> MajorMinor<T> {
     }
 }
 
-fn x_perpendicular(
+fn perpendicular(
     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
     x0: i32,
     y0: i32,
@@ -105,6 +105,9 @@ fn x_perpendicular(
         core::mem::swap(&mut width_l, &mut width_r);
     }
 
+    let orig_width_l = width_l as f32;
+    let orig_width_r = width_r as f32;
+
     let width_l = width_l.pow(2) * (dx * dx + dy * dy);
     let width_r = width_r.pow(2) * (dx * dx + dy * dy);
 
@@ -116,13 +119,27 @@ fn x_perpendicular(
 
     let (c1, c2) = (Rgb565::GREEN, Rgb565::GREEN);
 
-    while tk.pow(2) <= width_l + tk.pow(2) && width_l > 0 {
+    let mut distance = 0.0f32;
+
+    let origin = Point::new(x0, y0);
+
+    dbg!(orig_width_l);
+
+    // while tk.pow(2) <= width_l + tk.pow(2) && width_l > 0 {
+    while distance.floor() <= orig_width_l * 2.0 && width_l > 0 {
+        println!("---");
         let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
+
+        let thing = thing / orig_width_l;
+
+        dbg!(thing, tk.pow(2), width_l);
         let fract = if tk.pow(2) > width_l {
             1.0 - thing
         } else {
             1.0
         };
+
+        let fract = fract.max(0.2);
 
         Pixel(
             point,
@@ -143,7 +160,17 @@ fn x_perpendicular(
         error += e_major;
         point += step.minor;
         tk += 2 * dx;
+
+        dbg!(distance);
+
+        distance = {
+            let delta = point - origin;
+
+            f32::sqrt((delta.x.pow(2) + delta.y.pow(2)) as f32)
+        };
     }
+
+    println!("\n===========================\n");
 
     let mut point = Point::new(x0, y0);
     let mut error = -einit;
@@ -185,7 +212,7 @@ fn x_perpendicular(
     Ok(())
 }
 
-fn x_varthick_line(
+fn thick_line(
     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
     x0: i32,
     y0: i32,
@@ -207,7 +234,7 @@ fn x_varthick_line(
     let length = dx + 1;
 
     for _ in 0..length {
-        x_perpendicular(
+        perpendicular(
             display, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
 
@@ -219,7 +246,7 @@ fn x_varthick_line(
 
             if p_error >= threshold {
                 if width > 1 {
-                    x_perpendicular(
+                    perpendicular(
                         display,
                         point.x,
                         point.y,
@@ -327,7 +354,7 @@ impl App for LineDebug {
         let mut mock_display: MockDisplay<Rgb565> = MockDisplay::new();
         // mock_display.set_allow_out_of_bounds_drawing(true);
 
-        x_varthick_line(display, x0, y0, delta, step, pstep, width)?;
+        thick_line(display, x0, y0, delta, step, pstep, width)?;
         // x_varthick_line(&mut mock_display, x0, y0, delta, step, pstep, width)?;
 
         Line::new(self.start, self.end)
