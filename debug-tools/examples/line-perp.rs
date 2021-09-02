@@ -214,16 +214,48 @@ fn perpendicular(
 
 fn thick_line(
     display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    x0: i32,
-    y0: i32,
-    delta: MajorMinor<i32>,
-    step: MajorMinor<Point>,
-    pstep: MajorMinor<Point>,
+    start: Point,
+    end: Point,
     width: i32,
 ) -> Result<(), std::convert::Infallible> {
+    let (delta, step, pstep) = {
+        let delta = end - start;
+
+        let direction = Point::new(
+            if delta.x >= 0 { 1 } else { -1 },
+            if delta.y >= 0 { 1 } else { -1 },
+        );
+
+        let perp_direction = {
+            let perp_delta = Point::new(delta.y, -delta.x);
+
+            Point::new(
+                if perp_delta.x >= 0 { 1 } else { -1 },
+                if perp_delta.y >= 0 { 1 } else { -1 },
+            )
+        };
+
+        // let delta = delta.abs();
+
+        // Determine major and minor directions.
+        if delta.y.abs() >= delta.x.abs() {
+            (
+                MajorMinor::new(delta.y, delta.x),
+                MajorMinor::new(direction.y_axis(), direction.x_axis()),
+                MajorMinor::new(perp_direction.y_axis(), perp_direction.x_axis()),
+            )
+        } else {
+            (
+                MajorMinor::new(delta.x, delta.y),
+                MajorMinor::new(direction.x_axis(), direction.y_axis()),
+                MajorMinor::new(perp_direction.x_axis(), perp_direction.y_axis()),
+            )
+        }
+    };
+
     let mut p_error = 0;
     let mut error = 0;
-    let mut point = Point::new(x0, y0);
+    let mut point = start;
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -316,46 +348,9 @@ impl App for LineDebug {
         // let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
         let width = self.stroke_width as i32;
 
-        let (delta, step, pstep) = {
-            let delta = self.end - self.start;
-
-            let direction = Point::new(
-                if delta.x >= 0 { 1 } else { -1 },
-                if delta.y >= 0 { 1 } else { -1 },
-            );
-
-            let perp_direction = {
-                let perp_delta = Point::new(delta.y, -delta.x);
-
-                Point::new(
-                    if perp_delta.x >= 0 { 1 } else { -1 },
-                    if perp_delta.y >= 0 { 1 } else { -1 },
-                )
-            };
-
-            // let delta = delta.abs();
-
-            // Determine major and minor directions.
-            if delta.y.abs() >= delta.x.abs() {
-                (
-                    MajorMinor::new(delta.y, delta.x),
-                    MajorMinor::new(direction.y_axis(), direction.x_axis()),
-                    MajorMinor::new(perp_direction.y_axis(), perp_direction.x_axis()),
-                )
-            } else {
-                (
-                    MajorMinor::new(delta.x, delta.y),
-                    MajorMinor::new(direction.x_axis(), direction.y_axis()),
-                    MajorMinor::new(perp_direction.x_axis(), perp_direction.y_axis()),
-                )
-            }
-        };
-
         let mut mock_display: MockDisplay<Rgb565> = MockDisplay::new();
-        // mock_display.set_allow_out_of_bounds_drawing(true);
 
-        thick_line(display, x0, y0, delta, step, pstep, width)?;
-        // x_varthick_line(&mut mock_display, x0, y0, delta, step, pstep, width)?;
+        thick_line(display, self.start, self.end, width)?;
 
         Line::new(self.start, self.end)
             .into_styled(PrimitiveStyle::with_stroke(
