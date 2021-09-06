@@ -7,5 +7,5 @@ publish = false
 
 [dependencies]
 framework = { path = "../framework" }
-embedded-graphics = "0.7.1"
+embedded-graphics = { version = "0.7.1", path = "../../embedded-graphics" }
 embedded-graphics-simulator = "0.3.0"

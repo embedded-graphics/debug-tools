@@ -1,8 +1,8 @@
 use embedded_graphics::{
     mock_display::MockDisplay,
-    pixelcolor::Rgb565,
+    pixelcolor::{Gray8, Rgb888},
     prelude::*,
-    primitives::{Line, PrimitiveStyle},
+    primitives::{line::StrokeOffset, Line, PrimitiveStyle},
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
@@ -46,8 +46,31 @@ impl<T> MajorMinor<T> {
     }
 }
 
+fn dist(line: Line, point: Point) -> f32 {
+    let Line {
+        start: Point { x: x1, y: y1 },
+        end: Point { x: x2, y: y2 },
+    } = line;
+    let Point { x: x3, y: y3 } = point;
+
+    let delta = line.end - line.start;
+
+    let denom = (delta.x.pow(2) + delta.y.pow(2)) as f32;
+
+    let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) as f32 / denom;
+
+    let x = x1 as f32 + u * (x2 - x1) as f32;
+    let y = y1 as f32 + u * (y2 - y1) as f32;
+
+    let dist = f32::sqrt((x - x3 as f32).powi(2) + (y - y3 as f32).powi(2));
+
+    dist
+}
+
 fn perpendicular(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
+    display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
+    line: Line,
+    (mut left_extent, mut right_extent): (Line, Line),
     x0: i32,
     y0: i32,
     delta: MajorMinor<i32>,
@@ -64,7 +87,7 @@ fn perpendicular(
     }
 
     if width == 1 {
-        return Pixel(point, Rgb565::YELLOW).draw(display);
+        return Pixel(point, Rgb888::YELLOW).draw(display);
     }
 
     let dx = delta.major;
@@ -99,6 +122,7 @@ fn perpendicular(
 
     if sign == -1 {
         core::mem::swap(&mut width_l, &mut width_r);
+        core::mem::swap(&mut left_extent, &mut right_extent);
     }
 
     if side == LineSide::Right {
@@ -112,12 +136,12 @@ fn perpendicular(
     let width_r = width_r.pow(2) * (dx * dx + dy * dy);
 
     let (c1, c2) = if extra {
-        (Rgb565::RED, Rgb565::GREEN)
+        (Rgb888::RED, Rgb888::GREEN)
     } else {
-        (Rgb565::CSS_CORNFLOWER_BLUE, Rgb565::YELLOW)
+        (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
     };
 
-    let (c1, c2) = (Rgb565::GREEN, Rgb565::GREEN);
+    let (c1, c2) = (Rgb888::GREEN, Rgb888::GREEN);
 
     let mut distance = 0.0f32;
 
@@ -125,25 +149,19 @@ fn perpendicular(
 
     dbg!(orig_width_l);
 
+    let limit_l = orig_width_l * 2.0;
+
     // while tk.pow(2) <= width_l + tk.pow(2) && width_l > 0 {
-    while distance.floor() <= orig_width_l * 2.0 && width_l > 0 {
-        println!("---");
-        let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
+    while distance.floor() <= limit_l && width_l > 0 {
+        // println!("---");
 
-        let thing = thing / orig_width_l;
+        let fract = 1.0 - dbg!(dist(left_extent, point));
 
-        dbg!(thing, tk.pow(2), width_l);
-        let fract = if tk.pow(2) > width_l {
-            1.0 - thing
-        } else {
-            1.0
-        };
-
-        let fract = fract.max(0.2);
+        // let fract = 1.0;
 
         Pixel(
             point,
-            Rgb565::new(
+            Rgb888::new(
                 (c1.r() as f32 * fract) as u8,
                 (c1.g() as f32 * fract) as u8,
                 (c1.b() as f32 * fract) as u8,
@@ -161,7 +179,7 @@ fn perpendicular(
         point += step.minor;
         tk += 2 * dx;
 
-        dbg!(distance);
+        // dbg!(distance);
 
         distance = {
             let delta = point - origin;
@@ -188,7 +206,7 @@ fn perpendicular(
 
             Pixel(
                 point,
-                Rgb565::new(
+                Rgb888::new(
                     (c1.r() as f32 * fract) as u8,
                     (c1.g() as f32 * fract) as u8,
                     (c1.b() as f32 * fract) as u8,
@@ -213,11 +231,14 @@ fn perpendicular(
 }
 
 fn thick_line(
-    display: &mut impl DrawTarget<Color = Rgb565, Error = std::convert::Infallible>,
-    start: Point,
-    end: Point,
+    display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
+    line: Line,
     width: i32,
 ) -> Result<(), std::convert::Infallible> {
+    let Line { start, end } = line;
+
+    let extents = line.extents(width as u32, StrokeOffset::None);
+
     let (delta, step, pstep) = {
         let delta = end - start;
 
@@ -265,21 +286,27 @@ fn thick_line(
     let e_major = 2 * dy;
     let length = dx + 1;
 
+    let greys = 255.0 / dx as f32;
+
     for _ in 0..length {
         perpendicular(
-            display, point.x, point.y, delta, pstep, p_error, width, error, false,
+            display, line, extents, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
 
-        // Pixel(point, Rgb565::WHITE).draw(display)?;
+        // Pixel(point, color).draw(display)?;
 
         if error > threshold {
             point += step.minor;
             error += e_minor;
 
             if p_error >= threshold {
+                // Pixel(point, color).draw(display)?;
+
                 if width > 1 {
                     perpendicular(
                         display,
+                        line,
+                        extents,
                         point.x,
                         point.y,
                         delta,
@@ -290,7 +317,7 @@ fn thick_line(
                         true,
                     )?;
 
-                    // Pixel(point, Rgb565::BLACK).draw(display)?;
+                    // Pixel(point, Rgb888::WHITE).draw(display)?;
                 }
 
                 p_error += e_minor;
@@ -306,6 +333,104 @@ fn thick_line(
     Ok(())
 }
 
+// /// Left/right extents perpendicular to a given point. Returns `(L, R)`.
+// fn perp_extents(
+//     start: Point,
+//     delta: MajorMinor<i32>,
+//     mut step: MajorMinor<Point>,
+//     width: i32,
+// ) -> (Point, Point) {
+//     let mut point = start;
+
+//     if width < 2 {
+//         return (start, start);
+//     }
+
+//     let dx = delta.major;
+//     let dy = delta.minor;
+
+//     let mut sign = match (step.major, step.minor) {
+//         (Point { x: -1, y: 0 }, Point { x: 0, y: 1 }) => -1,
+//         (Point { x: 0, y: -1 }, Point { x: -1, y: 0 }) => -1,
+//         (Point { x: 1, y: 0 }, Point { x: 0, y: -1 }) => -1,
+//         (Point { x: 0, y: 1 }, Point { x: 1, y: 0 }) => -1,
+//         _ => 1,
+//     };
+
+//     if sign == -1 {
+//         step.major *= -1;
+//         step.minor *= -1;
+//     }
+
+//     let dx = dx.abs();
+//     let dy = dy.abs();
+
+//     let threshold = dx - 2 * dy;
+//     let e_minor = -2 * dx;
+//     let e_major = 2 * dy;
+
+//     let mut error = 0;
+//     let mut tk = 0i32;
+
+//     let side = LineSide::Center;
+
+//     let (mut width_l, mut width_r) = side.widths(width);
+
+//     if sign == -1 {
+//         core::mem::swap(&mut width_l, &mut width_r);
+//     }
+
+//     if side == LineSide::Right {
+//         core::mem::swap(&mut width_l, &mut width_r);
+//     }
+
+//     let orig_width_l = width_l as f32;
+//     let orig_width_r = width_r as f32;
+
+//     let width_l = width_l.pow(2) * (dx * dx + dy * dy);
+//     let width_r = width_r.pow(2) * (dx * dx + dy * dy);
+
+//     while tk.pow(2) <= width_l && width_l > 0 {
+//         if error >= threshold {
+//             point += step.major;
+//             error += e_minor;
+//             tk += 2 * dy;
+//         }
+
+//         error += e_major;
+//         point += step.minor;
+//         tk += 2 * dx;
+//     }
+
+//     let point_l = point;
+
+//     let mut point = start;
+//     let mut error = 0;
+//     let mut tk = 0i32;
+//     let mut p = 0;
+
+//     while tk.pow(2) <= width_r && width_r > 0 {
+//         if error > threshold {
+//             point -= step.major;
+//             error += e_minor;
+//             tk += 2 * dy;
+//         }
+
+//         error += e_major;
+//         point -= step.minor;
+//         tk += 2 * dx;
+//         p += 1;
+//     }
+
+//     (point_l, point)
+// }
+
+// fn extents(start: Point, end: Point, width: i32, step: MajorMinor<Point>) -> (Line, Line) {
+//     let delta = end - start;
+
+//     let (start_l, start_r) = perp_extents(start, delta, step, width);
+// }
+
 struct LineDebug {
     start: Point,
     end: Point,
@@ -313,7 +438,7 @@ struct LineDebug {
 }
 
 impl App for LineDebug {
-    type Color = Rgb565;
+    type Color = Rgb888;
     const DISPLAY_SIZE: Size = Size::new(200, 200);
     // const DISPLAY_SIZE: Size = Size::new(64, 64);
 
@@ -348,13 +473,13 @@ impl App for LineDebug {
         // let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
         let width = self.stroke_width as i32;
 
-        let mut mock_display: MockDisplay<Rgb565> = MockDisplay::new();
+        let mut mock_display: MockDisplay<Rgb888> = MockDisplay::new();
 
-        thick_line(display, self.start, self.end, width)?;
+        thick_line(display, Line::new(self.start, self.end), width)?;
 
         Line::new(self.start, self.end)
             .into_styled(PrimitiveStyle::with_stroke(
-                Rgb565::GREEN,
+                Rgb888::GREEN,
                 self.stroke_width,
             ))
             .draw(&mut display.translated(Point::new(40, 40)))?;
