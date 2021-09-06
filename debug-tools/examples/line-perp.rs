@@ -1,20 +1,25 @@
 use embedded_graphics::{
+    geometry::PointExt,
     mock_display::MockDisplay,
     pixelcolor::{Gray8, Rgb888},
     prelude::*,
-    primitives::{line::StrokeOffset, Line, PrimitiveStyle},
+    primitives::{
+        common::{LineSide, LinearEquation},
+        line::StrokeOffset,
+        Line, PrimitiveStyle,
+    },
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-enum LineSide {
+enum LineOffset {
     Left,
     Center,
     Right,
 }
 
-impl LineSide {
+impl LineOffset {
     fn widths(self, width: i32) -> (i32, i32) {
         match width {
             width => {
@@ -116,16 +121,19 @@ fn perpendicular(
     let mut error = einit;
     let mut tk = -winit;
 
-    let side = LineSide::Center;
+    let side = LineOffset::Center;
 
     let (mut width_l, mut width_r) = side.widths(width);
+
+    let (mut side_check_left, mut side_check_right) = (LineSide::Left, LineSide::Right);
 
     if sign == -1 {
         core::mem::swap(&mut width_l, &mut width_r);
         core::mem::swap(&mut left_extent, &mut right_extent);
+        core::mem::swap(&mut side_check_left, &mut side_check_right);
     }
 
-    if side == LineSide::Right {
+    if side == LineOffset::Right {
         core::mem::swap(&mut width_l, &mut width_r);
     }
 
@@ -135,19 +143,19 @@ fn perpendicular(
     let width_l = width_l.pow(2) * (dx * dx + dy * dy);
     let width_r = width_r.pow(2) * (dx * dx + dy * dy);
 
-    let (c1, c2) = if extra {
+    let (c_left, c_right) = if extra {
         (Rgb888::RED, Rgb888::GREEN)
     } else {
         (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
     };
 
-    let (c1, c2) = (Rgb888::GREEN, Rgb888::GREEN);
+    // let (c1, c2) = (Rgb888::GREEN, Rgb888::GREEN);
 
     let mut distance = 0.0f32;
 
     let origin = Point::new(x0, y0);
 
-    dbg!(orig_width_l);
+    // dbg!(orig_width_l);
 
     let limit_l = orig_width_l * 2.0;
 
@@ -155,16 +163,26 @@ fn perpendicular(
     while distance.floor() <= limit_l && width_l > 0 {
         // println!("---");
 
-        let fract = 1.0 - dbg!(dist(left_extent, point));
+        let is_outside = {
+            let le1 = LinearEquation::from_line(&left_extent);
 
-        // let fract = 1.0;
+            le1.check_side(point, side_check_left)
+        };
+
+        // let fract = 1.0 - dbg!(dist(left_extent, point));
+
+        let fract = if !is_outside {
+            1.0
+        } else {
+            1.0 - dist(left_extent, point)
+        };
 
         Pixel(
             point,
             Rgb888::new(
-                (c1.r() as f32 * fract) as u8,
-                (c1.g() as f32 * fract) as u8,
-                (c1.b() as f32 * fract) as u8,
+                (c_left.r() as f32 * fract) as u8,
+                (c_left.g() as f32 * fract) as u8,
+                (c_left.b() as f32 * fract) as u8,
             ),
         )
         .draw(display)?;
@@ -188,14 +206,14 @@ fn perpendicular(
         };
     }
 
-    println!("\n===========================\n");
+    // println!("\n===========================\n");
 
     let mut point = Point::new(x0, y0);
     let mut error = -einit;
     let mut tk = winit;
     let mut p = 0;
 
-    while tk.pow(2) <= width_r + tk.pow(2) && width_r > 0 {
+    while tk.pow(2) <= width_r && width_r > 0 {
         if p > 0 {
             let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
             let fract = if tk.pow(2) > width_l {
@@ -204,12 +222,14 @@ fn perpendicular(
                 1.0
             };
 
+            let fract = 1.0;
+
             Pixel(
                 point,
                 Rgb888::new(
-                    (c1.r() as f32 * fract) as u8,
-                    (c1.g() as f32 * fract) as u8,
-                    (c1.b() as f32 * fract) as u8,
+                    (c_right.r() as f32 * fract) as u8,
+                    (c_right.g() as f32 * fract) as u8,
+                    (c_right.b() as f32 * fract) as u8,
                 ),
             )
             .draw(display)?;
