@@ -149,17 +149,17 @@ fn perpendicular(
         (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
     };
 
-    // let (c1, c2) = (Rgb888::GREEN, Rgb888::GREEN);
-
-    let mut distance = 0.0f32;
+    let (c_left, c_right) = (Rgb888::GREEN, Rgb888::GREEN);
 
     let origin = Point::new(x0, y0);
 
     // dbg!(orig_width_l);
 
     let limit_l = orig_width_l * 2.0;
+    let limit_r = orig_width_r * 2.0;
 
-    // while tk.pow(2) <= width_l + tk.pow(2) && width_l > 0 {
+    let mut distance = 0.0f32;
+
     while distance.floor() <= limit_l && width_l > 0 {
         // println!("---");
 
@@ -208,32 +208,78 @@ fn perpendicular(
 
     // println!("\n===========================\n");
 
+    // let mut point = Point::new(x0, y0);
+    // let mut error = -einit;
+    // let mut tk = winit;
+    // let mut p = 0;
+
+    // while tk.pow(2) <= width_r + tk.pow(2) && width_r > 0 {
+    //     if p > 0 {
+    //         let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
+    //         let fract = if tk.pow(2) > width_l {
+    //             1.0 - thing
+    //         } else {
+    //             1.0
+    //         };
+
+    //         Pixel(
+    //             point,
+    //             Rgb565::new(
+    //                 (c1.r() as f32 * fract) as u8,
+    //                 (c1.g() as f32 * fract) as u8,
+    //                 (c1.b() as f32 * fract) as u8,
+    //             ),
+    //         )
+    //         .draw(display)?;
+    //     }
+
+    //     if error > threshold {
+    //         point -= step.major;
+    //         error += e_minor;
+    //         tk += 2 * dy;
+    //     }
+
+    //     error += e_major;
+    //     point -= step.minor;
+    //     tk += 2 * dx;
+    //     p += 1;
+    // }
+
+    // // ---
+
     let mut point = Point::new(x0, y0);
     let mut error = -einit;
     let mut tk = winit;
     let mut p = 0;
 
-    while tk.pow(2) <= width_r && width_r > 0 {
-        if p > 0 {
-            let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
-            let fract = if tk.pow(2) > width_l {
-                1.0 - thing
-            } else {
-                1.0
-            };
+    let mut distance = 0.0f32;
 
-            let fract = 1.0;
+    while distance.floor() <= limit_r && width_r > 0 {
+        // println!("---");
 
-            Pixel(
-                point,
-                Rgb888::new(
-                    (c_right.r() as f32 * fract) as u8,
-                    (c_right.g() as f32 * fract) as u8,
-                    (c_right.b() as f32 * fract) as u8,
-                ),
-            )
-            .draw(display)?;
-        }
+        let is_outside = {
+            let le1 = LinearEquation::from_line(&right_extent);
+
+            le1.check_side(point, side_check_right)
+        };
+
+        // let fract = 1.0 - dbg!(dist(left_extent, point));
+
+        let fract = if !is_outside {
+            1.0
+        } else {
+            1.0 - dist(right_extent, point)
+        };
+
+        Pixel(
+            point,
+            Rgb888::new(
+                (c_right.r() as f32 * fract) as u8,
+                (c_right.g() as f32 * fract) as u8,
+                (c_right.b() as f32 * fract) as u8,
+            ),
+        )
+        .draw(display)?;
 
         if error > threshold {
             point -= step.major;
@@ -244,7 +290,14 @@ fn perpendicular(
         error += e_major;
         point -= step.minor;
         tk += 2 * dx;
-        p += 1;
+
+        // dbg!(distance);
+
+        distance = {
+            let delta = point - origin;
+
+            f32::sqrt((delta.x.pow(2) + delta.y.pow(2)) as f32)
+        };
     }
 
     Ok(())
@@ -352,104 +405,6 @@ fn thick_line(
 
     Ok(())
 }
-
-// /// Left/right extents perpendicular to a given point. Returns `(L, R)`.
-// fn perp_extents(
-//     start: Point,
-//     delta: MajorMinor<i32>,
-//     mut step: MajorMinor<Point>,
-//     width: i32,
-// ) -> (Point, Point) {
-//     let mut point = start;
-
-//     if width < 2 {
-//         return (start, start);
-//     }
-
-//     let dx = delta.major;
-//     let dy = delta.minor;
-
-//     let mut sign = match (step.major, step.minor) {
-//         (Point { x: -1, y: 0 }, Point { x: 0, y: 1 }) => -1,
-//         (Point { x: 0, y: -1 }, Point { x: -1, y: 0 }) => -1,
-//         (Point { x: 1, y: 0 }, Point { x: 0, y: -1 }) => -1,
-//         (Point { x: 0, y: 1 }, Point { x: 1, y: 0 }) => -1,
-//         _ => 1,
-//     };
-
-//     if sign == -1 {
-//         step.major *= -1;
-//         step.minor *= -1;
-//     }
-
-//     let dx = dx.abs();
-//     let dy = dy.abs();
-
-//     let threshold = dx - 2 * dy;
-//     let e_minor = -2 * dx;
-//     let e_major = 2 * dy;
-
-//     let mut error = 0;
-//     let mut tk = 0i32;
-
-//     let side = LineSide::Center;
-
-//     let (mut width_l, mut width_r) = side.widths(width);
-
-//     if sign == -1 {
-//         core::mem::swap(&mut width_l, &mut width_r);
-//     }
-
-//     if side == LineSide::Right {
-//         core::mem::swap(&mut width_l, &mut width_r);
-//     }
-
-//     let orig_width_l = width_l as f32;
-//     let orig_width_r = width_r as f32;
-
-//     let width_l = width_l.pow(2) * (dx * dx + dy * dy);
-//     let width_r = width_r.pow(2) * (dx * dx + dy * dy);
-
-//     while tk.pow(2) <= width_l && width_l > 0 {
-//         if error >= threshold {
-//             point += step.major;
-//             error += e_minor;
-//             tk += 2 * dy;
-//         }
-
-//         error += e_major;
-//         point += step.minor;
-//         tk += 2 * dx;
-//     }
-
-//     let point_l = point;
-
-//     let mut point = start;
-//     let mut error = 0;
-//     let mut tk = 0i32;
-//     let mut p = 0;
-
-//     while tk.pow(2) <= width_r && width_r > 0 {
-//         if error > threshold {
-//             point -= step.major;
-//             error += e_minor;
-//             tk += 2 * dy;
-//         }
-
-//         error += e_major;
-//         point -= step.minor;
-//         tk += 2 * dx;
-//         p += 1;
-//     }
-
-//     (point_l, point)
-// }
-
-// fn extents(start: Point, end: Point, width: i32, step: MajorMinor<Point>) -> (Line, Line) {
-//     let delta = end - start;
-
-//     let (start_l, start_r) = perp_extents(start, delta, step, width);
-// }
 
 struct LineDebug {
     start: Point,
