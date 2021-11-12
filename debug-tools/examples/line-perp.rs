@@ -153,23 +153,17 @@ fn perpendicular(
 
     let origin = Point::new(x0, y0);
 
-    // dbg!(orig_width_l);
-
     let limit_l = orig_width_l * 2.0;
     let limit_r = orig_width_r * 2.0;
 
     let mut distance = 0.0f32;
 
     while distance.floor() <= limit_l && width_l > 0 {
-        // println!("---");
-
         let is_outside = {
             let le1 = LinearEquation::from_line(&left_extent);
 
             le1.check_side(point, side_check_left)
         };
-
-        // let fract = 1.0 - dbg!(dist(left_extent, point));
 
         let fract = if !is_outside {
             1.0
@@ -197,55 +191,12 @@ fn perpendicular(
         point += step.minor;
         tk += 2 * dx;
 
-        // dbg!(distance);
-
         distance = {
             let delta = point - origin;
 
             f32::sqrt((delta.x.pow(2) + delta.y.pow(2)) as f32)
         };
     }
-
-    // println!("\n===========================\n");
-
-    // let mut point = Point::new(x0, y0);
-    // let mut error = -einit;
-    // let mut tk = winit;
-    // let mut p = 0;
-
-    // while tk.pow(2) <= width_r + tk.pow(2) && width_r > 0 {
-    //     if p > 0 {
-    //         let thing = (tk.pow(2) - width_l) as f32 / width_l as f32;
-    //         let fract = if tk.pow(2) > width_l {
-    //             1.0 - thing
-    //         } else {
-    //             1.0
-    //         };
-
-    //         Pixel(
-    //             point,
-    //             Rgb565::new(
-    //                 (c1.r() as f32 * fract) as u8,
-    //                 (c1.g() as f32 * fract) as u8,
-    //                 (c1.b() as f32 * fract) as u8,
-    //             ),
-    //         )
-    //         .draw(display)?;
-    //     }
-
-    //     if error > threshold {
-    //         point -= step.major;
-    //         error += e_minor;
-    //         tk += 2 * dy;
-    //     }
-
-    //     error += e_major;
-    //     point -= step.minor;
-    //     tk += 2 * dx;
-    //     p += 1;
-    // }
-
-    // // ---
 
     let mut point = Point::new(x0, y0);
     let mut error = -einit;
@@ -255,15 +206,11 @@ fn perpendicular(
     let mut distance = 0.0f32;
 
     while distance.floor() <= limit_r && width_r > 0 {
-        // println!("---");
-
         let is_outside = {
             let le1 = LinearEquation::from_line(&right_extent);
 
             le1.check_side(point, side_check_right)
         };
-
-        // let fract = 1.0 - dbg!(dist(left_extent, point));
 
         let fract = if !is_outside {
             1.0
@@ -290,8 +237,6 @@ fn perpendicular(
         error += e_major;
         point -= step.minor;
         tk += 2 * dx;
-
-        // dbg!(distance);
 
         distance = {
             let delta = point - origin;
@@ -328,8 +273,6 @@ fn thick_line(
                 if perp_delta.y >= 0 { 1 } else { -1 },
             )
         };
-
-        // let delta = delta.abs();
 
         // Determine major and minor directions.
         if delta.y.abs() >= delta.x.abs() {
