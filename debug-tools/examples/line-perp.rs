@@ -180,7 +180,7 @@ fn perpendicular(
         )
         .draw(display)?;
 
-        if error >= threshold {
+        if error > threshold {
             point += step.major;
             error += e_minor;
         }
