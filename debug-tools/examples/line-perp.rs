@@ -157,18 +157,20 @@ fn perpendicular(
 
     let mut distance = 0.0f32;
 
-    while distance.floor() <= limit_l && width_l > 0 {
-        let is_outside = {
-            let le1 = LinearEquation::from_line(&left_extent);
+    let mut prev_d = orig_width_l;
 
-            le1.check_side(point, side_check_left)
-        };
+    let le1 = LinearEquation::from_line(&left_extent);
 
-        let fract = if !is_outside {
-            1.0
-        } else {
-            1.0 - dist(left_extent, point)
-        };
+    loop {
+        let is_outside = le1.check_side(point, side_check_left);
+
+        let d = dist(left_extent, point);
+
+        let fract = if !is_outside { 1.0 } else { 1.0 - d };
+
+        if fract <= 0.0 {
+            break;
+        }
 
         Pixel(
             point,
@@ -187,12 +189,6 @@ fn perpendicular(
 
         error += e_major;
         point += step.minor;
-
-        distance = {
-            let delta = point - origin;
-
-            f32::sqrt((delta.x.pow(2) + delta.y.pow(2)) as f32)
-        };
     }
 
     let mut point = Point::new(x0, y0);
