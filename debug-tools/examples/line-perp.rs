@@ -28,8 +28,8 @@ impl LineOffset {
                     Self::Center => {
                         let width = width.saturating_sub(1);
 
-                        // Right-side bias for odd width lines. Move mod2 to first item to bias to
-                        // the left.
+                        // Right-side bias for even width lines. Move mod2 to first item in the
+                        // tuple to bias to the left instead.
                         (width, width + (width % 2))
                     }
                     Self::Right => ((width * 2).saturating_sub(1), 0),
@@ -91,14 +91,14 @@ fn perpendicular(
         return Ok(());
     }
 
-    if width == 1 {
-        return Pixel(point, Rgb888::YELLOW).draw(display);
-    }
+    // if width == 1 {
+    //     return Pixel(point, Rgb888::YELLOW).draw(display);
+    // }
 
     let dx = delta.major;
     let dy = delta.minor;
 
-    let mut sign = match (step.major, step.minor) {
+    let sign = match (step.major, step.minor) {
         (Point { x: -1, y: 0 }, Point { x: 0, y: 1 }) => -1,
         (Point { x: 0, y: -1 }, Point { x: -1, y: 0 }) => -1,
         (Point { x: 1, y: 0 }, Point { x: 0, y: -1 }) => -1,
@@ -106,10 +106,10 @@ fn perpendicular(
         _ => 1,
     };
 
-    if sign == -1 {
-        step.major *= -1;
-        step.minor *= -1;
-    }
+    // if sign == -1 {
+    //     step.major *= -1;
+    //     step.minor *= -1;
+    // }
 
     let dx = dx.abs();
     let dy = dy.abs();
@@ -118,8 +118,7 @@ fn perpendicular(
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
 
-    let mut error = einit;
-    let mut tk = -winit;
+    let mut error = einit * sign;
 
     let side = LineOffset::Center;
 
@@ -127,15 +126,15 @@ fn perpendicular(
 
     let (mut side_check_left, mut side_check_right) = (LineSide::Left, LineSide::Right);
 
-    if sign == -1 {
-        core::mem::swap(&mut width_l, &mut width_r);
-        core::mem::swap(&mut left_extent, &mut right_extent);
-        core::mem::swap(&mut side_check_left, &mut side_check_right);
-    }
+    // if sign == -1 {
+    //     core::mem::swap(&mut width_l, &mut width_r);
+    //     core::mem::swap(&mut left_extent, &mut right_extent);
+    //     core::mem::swap(&mut side_check_left, &mut side_check_right);
+    // }
 
-    if side == LineOffset::Right {
-        core::mem::swap(&mut width_l, &mut width_r);
-    }
+    // if side == LineOffset::Right {
+    //     core::mem::swap(&mut width_l, &mut width_r);
+    // }
 
     let orig_width_l = width_l as f32;
     let orig_width_r = width_r as f32;
@@ -149,7 +148,7 @@ fn perpendicular(
         (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
     };
 
-    let (c_left, c_right) = (Rgb888::GREEN, Rgb888::GREEN);
+    // let (c_left, c_right) = (Rgb888::GREEN, Rgb888::GREEN);
 
     let origin = Point::new(x0, y0);
 
@@ -184,12 +183,10 @@ fn perpendicular(
         if error >= threshold {
             point += step.major;
             error += e_minor;
-            tk += 2 * dy;
         }
 
         error += e_major;
         point += step.minor;
-        tk += 2 * dx;
 
         distance = {
             let delta = point - origin;
@@ -199,9 +196,7 @@ fn perpendicular(
     }
 
     let mut point = Point::new(x0, y0);
-    let mut error = -einit;
-    let mut tk = winit;
-    let mut p = 0;
+    let mut error = einit * -sign;
 
     let mut distance = 0.0f32;
 
@@ -231,12 +226,10 @@ fn perpendicular(
         if error > threshold {
             point -= step.major;
             error += e_minor;
-            tk += 2 * dy;
         }
 
         error += e_major;
         point -= step.minor;
-        tk += 2 * dx;
 
         distance = {
             let delta = point - origin;
@@ -266,7 +259,9 @@ fn thick_line(
         );
 
         let perp_direction = {
-            let perp_delta = Point::new(delta.y, -delta.x);
+            // let perp_delta = Point::new(delta.y, -delta.x);
+            let perp_delta = line.perpendicular();
+            let perp_delta = perp_delta.end - perp_delta.start;
 
             Point::new(
                 if perp_delta.x >= 0 { 1 } else { -1 },
@@ -304,20 +299,25 @@ fn thick_line(
 
     let greys = 255.0 / dx as f32;
 
-    for _ in 0..length {
+    let skele_color = Rgb888::MAGENTA;
+
+    for i in 0..length {
+        // let draw_skele = i % 2 == 0;
+        let draw_skele = false;
+
         perpendicular(
             display, line, extents, point.x, point.y, delta, pstep, p_error, width, error, false,
         )?;
 
-        // Pixel(point, color).draw(display)?;
+        if draw_skele {
+            Pixel(point, skele_color).draw(display)?;
+        }
 
         if error > threshold {
             point += step.minor;
             error += e_minor;
 
             if p_error >= threshold {
-                // Pixel(point, color).draw(display)?;
-
                 if width > 1 {
                     perpendicular(
                         display,
@@ -333,7 +333,9 @@ fn thick_line(
                         true,
                     )?;
 
-                    // Pixel(point, Rgb888::WHITE).draw(display)?;
+                    if draw_skele {
+                        Pixel(point, skele_color).draw(display)?;
+                    }
                 }
 
                 p_error += e_minor;
@@ -395,12 +397,14 @@ impl App for LineDebug {
 
         thick_line(display, Line::new(self.start, self.end), width)?;
 
-        Line::new(self.start, self.end)
-            .into_styled(PrimitiveStyle::with_stroke(
-                Rgb888::GREEN,
-                self.stroke_width,
-            ))
-            .draw(&mut display.translated(Point::new(40, 40)))?;
+        // let l = Line::new(self.start, self.end);
+
+        // l.into_styled(PrimitiveStyle::with_stroke(Rgb888::GREEN, 1))
+        //     .draw(&mut display.translated(Point::new(40, 40)))?;
+
+        // l.perpendicular()
+        //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::RED, 1))
+        //     .draw(&mut display.translated(Point::new(40, 40)))?;
 
         Ok(())
     }
