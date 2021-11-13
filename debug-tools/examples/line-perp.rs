@@ -91,10 +91,6 @@ fn perpendicular(
         return Ok(());
     }
 
-    // if width == 1 {
-    //     return Pixel(point, Rgb888::YELLOW).draw(display);
-    // }
-
     let dx = delta.major;
     let dy = delta.minor;
 
@@ -106,11 +102,6 @@ fn perpendicular(
         _ => 1,
     };
 
-    // if sign == -1 {
-    //     step.major *= -1;
-    //     step.minor *= -1;
-    // }
-
     let dx = dx.abs();
     let dy = dy.abs();
 
@@ -120,27 +111,7 @@ fn perpendicular(
 
     let mut error = einit * sign;
 
-    let side = LineOffset::Center;
-
-    let (mut width_l, mut width_r) = side.widths(width);
-
-    let (mut side_check_left, mut side_check_right) = (LineSide::Left, LineSide::Right);
-
-    // if sign == -1 {
-    //     core::mem::swap(&mut width_l, &mut width_r);
-    //     core::mem::swap(&mut left_extent, &mut right_extent);
-    //     core::mem::swap(&mut side_check_left, &mut side_check_right);
-    // }
-
-    // if side == LineOffset::Right {
-    //     core::mem::swap(&mut width_l, &mut width_r);
-    // }
-
-    let orig_width_l = width_l as f32;
-    let orig_width_r = width_r as f32;
-
-    let width_l = width_l.pow(2) * (dx * dx + dy * dy);
-    let width_r = width_r.pow(2) * (dx * dx + dy * dy);
+    let (side_check_left, side_check_right) = (LineSide::Left, LineSide::Right);
 
     let (c_left, c_right) = if extra {
         (Rgb888::RED, Rgb888::GREEN)
@@ -150,19 +121,10 @@ fn perpendicular(
 
     // let (c_left, c_right) = (Rgb888::GREEN, Rgb888::GREEN);
 
-    let origin = Point::new(x0, y0);
-
-    let limit_l = orig_width_l * 2.0;
-    let limit_r = orig_width_r * 2.0;
-
-    let mut distance = 0.0f32;
-
-    let mut prev_d = orig_width_l;
-
-    let le1 = LinearEquation::from_line(&left_extent);
+    let le = LinearEquation::from_line(&left_extent);
 
     loop {
-        let is_outside = le1.check_side(point, side_check_left);
+        let is_outside = le.check_side(point, side_check_left);
 
         let d = dist(left_extent, point);
 
@@ -194,20 +156,18 @@ fn perpendicular(
     let mut point = Point::new(x0, y0);
     let mut error = einit * -sign;
 
-    let mut distance = 0.0f32;
+    let le = LinearEquation::from_line(&right_extent);
 
-    while distance.floor() <= limit_r && width_r > 0 {
-        let is_outside = {
-            let le1 = LinearEquation::from_line(&right_extent);
+    loop {
+        let is_outside = le.check_side(point, side_check_right);
 
-            le1.check_side(point, side_check_right)
-        };
+        let d = dist(right_extent, point);
 
-        let fract = if !is_outside {
-            1.0
-        } else {
-            1.0 - dist(right_extent, point)
-        };
+        let fract = if !is_outside { 1.0 } else { 1.0 - d };
+
+        if fract <= 0.0 {
+            break;
+        }
 
         Pixel(
             point,
@@ -226,12 +186,6 @@ fn perpendicular(
 
         error += e_major;
         point -= step.minor;
-
-        distance = {
-            let delta = point - origin;
-
-            f32::sqrt((delta.x.pow(2) + delta.y.pow(2)) as f32)
-        };
     }
 
     Ok(())
