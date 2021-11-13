@@ -113,6 +113,8 @@ fn perpendicular(
 
     let (side_check_left, side_check_right) = (LineSide::Left, LineSide::Right);
 
+    let (width_l, width_r) = LineOffset::Center.widths(width);
+
     let (c_left, c_right) = if extra {
         (Rgb888::RED, Rgb888::GREEN)
     } else {
@@ -122,6 +124,14 @@ fn perpendicular(
     // let (c_left, c_right) = (Rgb888::GREEN, Rgb888::GREEN);
 
     let le = LinearEquation::from_line(&left_extent);
+
+    // Skip first iteration
+    if error > threshold {
+        point += step.major;
+        error += e_minor;
+    }
+    error += e_major;
+    point += step.minor;
 
     loop {
         let is_outside = le.check_side(point, side_check_left);
@@ -157,6 +167,15 @@ fn perpendicular(
     let mut error = einit * -sign;
 
     let le = LinearEquation::from_line(&right_extent);
+
+    // // No overdraw
+    // if error > threshold {
+    //     point -= step.major;
+    //     error += e_minor;
+    // }
+
+    // error += e_major;
+    // point -= step.minor;
 
     loop {
         let is_outside = le.check_side(point, side_check_right);
