@@ -1,12 +1,11 @@
 use embedded_graphics::{
-    geometry::PointExt,
     mock_display::MockDisplay,
-    pixelcolor::{Gray8, Rgb888},
+    pixelcolor::Rgb888,
     prelude::*,
     primitives::{
         common::{LineSide, LinearEquation},
         line::StrokeOffset,
-        Line, PrimitiveStyle,
+        Line,
     },
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
@@ -74,15 +73,15 @@ fn dist(line: Line, point: Point) -> f32 {
 
 fn perpendicular(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    line: Line,
-    (mut left_extent, mut right_extent): (Line, Line),
+    _line: Line,
+    (left_extent, right_extent): (Line, Line),
     x0: i32,
     y0: i32,
     delta: MajorMinor<i32>,
-    mut step: MajorMinor<Point>,
+    step: MajorMinor<Point>,
     einit: i32,
     width: i32,
-    winit: i32,
+    _winit: i32,
     extra: bool,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = Point::new(x0, y0);
@@ -113,7 +112,7 @@ fn perpendicular(
 
     let (side_check_left, side_check_right) = (LineSide::Left, LineSide::Right);
 
-    let (width_l, width_r) = LineOffset::Center.widths(width);
+    let (_width_l, _width_r) = LineOffset::Center.widths(width);
 
     let (c_left, c_right) = if extra {
         (Rgb888::RED, Rgb888::GREEN)
@@ -266,11 +265,11 @@ fn thick_line(
     let e_major = 2 * dy;
     let length = dx + 1;
 
-    let greys = 255.0 / dx as f32;
+    let _greys = 255.0 / dx as f32;
 
     let skele_color = Rgb888::MAGENTA;
 
-    for i in 0..length {
+    for _i in 0..length {
         // let draw_skele = i % 2 == 0;
         let draw_skele = false;
 
@@ -356,13 +355,13 @@ impl App for LineDebug {
         &self,
         display: &mut SimulatorDisplay<Self::Color>,
     ) -> Result<(), std::convert::Infallible> {
-        let Point { x: x0, y: y0 } = self.start;
+        let Point { x: _x0, y: _y0 } = self.start;
 
         // let width = 2 * self.stroke_width as i32 * f32::sqrt((dx * dx + dy * dy) as f32) as i32;
         // let width = (self.stroke_width as i32).pow(2) * (dx * dx + dy * dy);
         let width = self.stroke_width as i32;
 
-        let mut mock_display: MockDisplay<Rgb888> = MockDisplay::new();
+        let _mock_display: MockDisplay<Rgb888> = MockDisplay::new();
 
         thick_line(display, Line::new(self.start, self.end), width)?;
 
