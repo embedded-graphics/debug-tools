@@ -133,48 +133,14 @@ fn perpendicular(
     error += e_major;
     point += step.minor;
 
-    // println!("---");
-
     loop {
         let is_outside = le.check_side(point, side_check_left);
 
-        // let le_dist = le.distance(p);
-
-        // if is_outside && le_dist.pow(2) > left_extent.delta().length_squared() {
         if is_outside {
             break;
         }
 
-        // let d = dist(left_extent, p);
-
-        // let fract = if !is_outside { 1.0 } else { 1.0 - d };
-
-        // println!(
-        //     "{} {} {} {} {} {}",
-        //     is_outside,
-        //     le_dist.pow(2),
-        //     left_extent.delta().length_squared(),
-        //     le_dist.pow(2) > left_extent.delta().length_squared(),
-        //     dist(left_extent, p),
-        //     fract
-        // );
-
-        // if fract <= 0.0 {
-        //     break;
-        // }
-
-        // let fract = 1.0;
-
-        Pixel(
-            point,
-            c_left
-            // Rgb888::new(
-            //     (c_left.r() as f32 * fract) as u8,
-            //     (c_left.g() as f32 * fract) as u8,
-            //     (c_left.b() as f32 * fract) as u8,
-            // ),
-        )
-        .draw(display)?;
+        Pixel(point, c_left).draw(display)?;
 
         if error > threshold {
             point += step.major;
@@ -214,35 +180,14 @@ fn perpendicular(
 
     let le = LinearEquation::from_line(&right_extent);
 
-    // // No overdraw
-    // if error > threshold {
-    //     point -= step.major;
-    //     error += e_minor;
-    // }
-
-    // error += e_major;
-    // point -= step.minor;
-
     loop {
         let is_outside = le.check_side(point, side_check_right);
 
-        let d = dist(right_extent, point);
-
-        let fract = if !is_outside { 1.0 } else { 1.0 - d };
-
-        if fract <= 0.0 {
+        if is_outside {
             break;
         }
 
-        Pixel(
-            point,
-            Rgb888::new(
-                (c_right.r() as f32 * fract) as u8,
-                (c_right.g() as f32 * fract) as u8,
-                (c_right.b() as f32 * fract) as u8,
-            ),
-        )
-        .draw(display)?;
+        Pixel(point, c_right).draw(display)?;
 
         if error > threshold {
             point -= step.major;
@@ -251,6 +196,30 @@ fn perpendicular(
 
         error += e_major;
         point -= step.minor;
+    }
+
+    // Last pixel, AA
+    {
+        let d = dist(right_extent, point);
+
+        let fract = 1.0 - d;
+
+        let fract = (fract * 255.0) as i32;
+
+        // Don't draw any pixels that are too far away from the line
+        if fract > 0 {
+            let fract = fract as u32;
+
+            Pixel(
+                point,
+                Rgb888::new(
+                    ((fract * c_right.r() as u32) / 255) as u8,
+                    ((fract * c_right.g() as u32) / 255) as u8,
+                    ((fract * c_right.b() as u32) / 255) as u8,
+                ),
+            )
+            .draw(display)?;
+        }
     }
 
     Ok(())
