@@ -1,4 +1,5 @@
 use embedded_graphics::{
+    geometry::PointExt,
     mock_display::MockDisplay,
     pixelcolor::Rgb888,
     prelude::*,
@@ -135,13 +136,15 @@ fn perpendicular(
     loop {
         let is_outside = le.check_side(point, side_check_left);
 
+        let le_dist = le.distance(point);
+
+        if is_outside && le_dist.pow(2) > left_extent.delta().length_squared() {
+            break;
+        }
+
         let d = dist(left_extent, point);
 
         let fract = if !is_outside { 1.0 } else { 1.0 - d };
-
-        if fract <= 0.0 {
-            break;
-        }
 
         Pixel(
             point,
