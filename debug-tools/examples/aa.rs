@@ -1,4 +1,6 @@
 //! Render a 1px wide antialiased line using error components and a 255 multiplier.
+//!
+//! Inspiration from <https://computergraphics.stackexchange.com/a/10675>
 
 use embedded_graphics::{
     mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
@@ -20,57 +22,101 @@ impl<T> MajorMinor<T> {
 
 fn thick_line(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    line: Line,
+    mut line: Line,
     _width: i32,
 ) -> Result<(), std::convert::Infallible> {
-    let Line { start, end } = line;
-
-    let (delta, step) = {
-        let delta = end - start;
-
-        let direction = Point::new(
-            if delta.x >= 0 { 1 } else { -1 },
-            if delta.y >= 0 { 1 } else { -1 },
-        );
-
-        // Determine major and minor directions.
-        if delta.y.abs() >= delta.x.abs() {
-            (
-                MajorMinor::new(delta.y, delta.x),
-                MajorMinor::new(direction.y_axis(), direction.x_axis()),
-            )
-        } else {
-            (
-                MajorMinor::new(delta.x, delta.y),
-                MajorMinor::new(direction.x_axis(), direction.y_axis()),
-            )
-        }
-    };
-
-    let mut error = 0;
-    let mut point = start;
-
-    let dx = delta.major.abs();
-    let dy = delta.minor.abs();
-
-    let threshold = dx - 2 * dy;
-    let e_minor = -2 * dx;
-    let e_major = 2 * dy;
-    let length = dx + 1;
-
     let skele_color = Rgb888::MAGENTA;
 
-    for _i in 0..length {
-        Pixel(point, skele_color).draw(display)?;
+    // let Line { start, end } = line;
 
-        if error > threshold {
-            point += step.minor;
-            error += e_minor;
+    let orig_start_y = line.start.y;
+
+    // line.start.y <<= 8;
+    // line.end.y <<= 8;
+
+    let delta = line.delta();
+
+    let dx = delta.x;
+    let dy = delta.y;
+
+    let slope = dy as f32 / dx as f32;
+
+    let mut point = line.start;
+
+    let mut error: f32 = 0.0;
+
+    for _i in 0..=dx {
+        let c = skele_color;
+
+        // let bright = (1.0 - (error as f32 / e_minor as f32 * 255.0)).abs() as u32;
+
+        // let c = Rgb888::new(
+        //     ((bright * skele_color.r() as u32) / 255) as u8,
+        //     ((bright * skele_color.g() as u32) / 255) as u8,
+        //     ((bright * skele_color.b() as u32) / 255) as u8,
+        // );
+
+        Pixel(Point::new(point.x, point.y), c).draw(display)?;
+
+        error += slope;
+
+        if error > 0.5 {
+            point.y += 1;
+            error -= 1.0;
         }
 
-        error += e_major;
-        point += step.major;
+        point.x += 1;
     }
+
+    // // let Line { start, end } = line;
+
+    // let orig_start_y = line.start.y;
+
+    // // line.start.y <<= 8;
+    // // line.end.y <<= 8;
+
+    // let delta = line.delta();
+
+    // let mut error: i32 = 0;
+    // let mut point = line.start;
+
+    // // let dx = delta.major.abs();
+    // // let dy = delta.minor.abs();
+    // let dx = delta.x;
+    // let dy = delta.y;
+
+    // let threshold = dx - 2 * dy;
+    // let e_minor = -2 * dx;
+    // let e_major = 2 * dy;
+    // let length = dx + 1;
+
+    // let skele_color = Rgb888::MAGENTA;
+
+    // let mut py = 0;
+
+    // for _i in 0..length {
+    //     let c = skele_color;
+
+    //     // let bright = (1.0 - (error as f32 / e_minor as f32 * 255.0)).abs() as u32;
+
+    //     // let c = Rgb888::new(
+    //     //     ((bright * skele_color.r() as u32) / 255) as u8,
+    //     //     ((bright * skele_color.g() as u32) / 255) as u8,
+    //     //     ((bright * skele_color.b() as u32) / 255) as u8,
+    //     // );
+
+    //     Pixel(Point::new(point.x, orig_start_y + (py >> 8)), c).draw(display)?;
+
+    //     println!("{}", (error as f32) / threshold as f32);
+
+    //     if error > threshold {
+    //         py += 1 << 8;
+    //         error += e_minor;
+    //     }
+
+    //     error += e_major;
+    //     point.x += 1;
+    // }
 
     Ok(())
 }
