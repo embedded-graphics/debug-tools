@@ -49,7 +49,7 @@ fn thick_line(
     let mut br: u8 = 255;
 
     for _i in 0..=dx {
-        // AA point above line
+        // AA point above
         let bright = br as u32;
         let c = Rgb888::new(
             ((bright * skele_color.r() as u32) / 255) as u8,
@@ -57,6 +57,15 @@ fn thick_line(
             ((bright * skele_color.b() as u32) / 255) as u8,
         );
         Pixel(Point::new(point.x, point.y - 1), c).draw(display)?;
+
+        // AA point below
+        let bright = (255 - br) as u32;
+        let c = Rgb888::new(
+            ((bright * skele_color.r() as u32) / 255) as u8,
+            ((bright * skele_color.g() as u32) / 255) as u8,
+            ((bright * skele_color.b() as u32) / 255) as u8,
+        );
+        Pixel(Point::new(point.x, point.y + 1), c).draw(display)?;
 
         // Line skeleton
         // let bright = (e * 255.0) as u32;
