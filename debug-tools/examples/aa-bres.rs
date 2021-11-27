@@ -39,7 +39,8 @@ fn thick_line(
     let dx = delta.x;
     let dy = delta.y;
 
-    let slope = dy as f32 / dx as f32;
+    let slope = (dy * 255) as f32 / dx as f32;
+    dbg!(slope);
 
     let mut point = line.start;
 
@@ -51,7 +52,8 @@ fn thick_line(
     // E_square
     let e_major = 2 * dy;
 
-    let mut br = 1.0;
+    // TODO: Calculate initial brightness
+    let mut br = 255.0;
 
     for _i in 0..=dx {
         let c = skele_color;
@@ -64,13 +66,14 @@ fn thick_line(
 
         // let bright = e as f32 / (dx as f32);
 
-        dbg!(e, br);
+        // dbg!(e, br);
 
-        let bright = br;
+        // let bright = br;
 
         // AA point above line
         // let bright = ((1.0 - e) * 255.0) as u32;
-        let bright = (bright * 255.0) as u32;
+        // let bright = (bright * 255.0) as u32;
+        let bright = br as u32;
         let c = Rgb888::new(
             ((bright * skele_color.r() as u32) / 255) as u8,
             ((bright * skele_color.g() as u32) / 255) as u8,
@@ -94,7 +97,7 @@ fn thick_line(
             point.y += 1;
             // error = 0.0;
             error += e_minor;
-            br = 1.0;
+            br = 255.0;
         }
 
         error += e_major;
