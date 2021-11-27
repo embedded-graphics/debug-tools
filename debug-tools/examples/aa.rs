@@ -50,19 +50,34 @@ fn thick_line(
 
         // let bright = (1.0 - (error as f32 / e_minor as f32 * 255.0)).abs() as u32;
 
-        // let c = Rgb888::new(
-        //     ((bright * skele_color.r() as u32) / 255) as u8,
-        //     ((bright * skele_color.g() as u32) / 255) as u8,
-        //     ((bright * skele_color.b() as u32) / 255) as u8,
-        // );
+        let e = error.abs();
 
+        dbg!(e);
+
+        // AA point above line
+        let bright = ((1.0 - e) * 255.0) as u32;
+        let c = Rgb888::new(
+            ((bright * skele_color.r() as u32) / 255) as u8,
+            ((bright * skele_color.g() as u32) / 255) as u8,
+            ((bright * skele_color.b() as u32) / 255) as u8,
+        );
+        Pixel(Point::new(point.x, point.y - 1), c).draw(display)?;
+
+        // Line skeleton
+        // let bright = (e * 255.0) as u32;
+        let bright = 255;
+        let c = Rgb888::new(
+            ((bright * skele_color.r() as u32) / 255) as u8,
+            ((bright * skele_color.g() as u32) / 255) as u8,
+            ((bright * skele_color.b() as u32) / 255) as u8,
+        );
         Pixel(Point::new(point.x, point.y), c).draw(display)?;
 
         error += slope;
 
-        if error > 0.5 {
+        if error > 1.0 {
             point.y += 1;
-            error -= 1.0;
+            error = 0.0;
         }
 
         point.x += 1;
