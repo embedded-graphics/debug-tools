@@ -51,6 +51,8 @@ fn thick_line(
     // E_square
     let e_major = 2 * dy;
 
+    let mut br = 1.0;
+
     for _i in 0..=dx {
         let c = skele_color;
 
@@ -58,16 +60,23 @@ fn thick_line(
 
         let e = error.abs();
 
-        dbg!(e);
+        // let bright = f32::fract(e_major as f32 / e as f32);
 
-        // // AA point above line
+        // let bright = e as f32 / (dx as f32);
+
+        dbg!(e, br);
+
+        let bright = br;
+
+        // AA point above line
         // let bright = ((1.0 - e) * 255.0) as u32;
-        // let c = Rgb888::new(
-        //     ((bright * skele_color.r() as u32) / 255) as u8,
-        //     ((bright * skele_color.g() as u32) / 255) as u8,
-        //     ((bright * skele_color.b() as u32) / 255) as u8,
-        // );
-        // Pixel(Point::new(point.x, point.y - 1), c).draw(display)?;
+        let bright = (bright * 255.0) as u32;
+        let c = Rgb888::new(
+            ((bright * skele_color.r() as u32) / 255) as u8,
+            ((bright * skele_color.g() as u32) / 255) as u8,
+            ((bright * skele_color.b() as u32) / 255) as u8,
+        );
+        Pixel(Point::new(point.x, point.y - 1), c).draw(display)?;
 
         // Line skeleton
         // let bright = (e * 255.0) as u32;
@@ -85,61 +94,13 @@ fn thick_line(
             point.y += 1;
             // error = 0.0;
             error += e_minor;
+            br = 1.0;
         }
 
         error += e_major;
         point.x += 1;
+        br -= slope;
     }
-
-    // // let Line { start, end } = line;
-
-    // let orig_start_y = line.start.y;
-
-    // // line.start.y <<= 8;
-    // // line.end.y <<= 8;
-
-    // let delta = line.delta();
-
-    // let mut error: i32 = 0;
-    // let mut point = line.start;
-
-    // // let dx = delta.major.abs();
-    // // let dy = delta.minor.abs();
-    // let dx = delta.x;
-    // let dy = delta.y;
-
-    // let threshold = dx - 2 * dy;
-    // let e_minor = -2 * dx;
-    // let e_major = 2 * dy;
-    // let length = dx + 1;
-
-    // let skele_color = Rgb888::MAGENTA;
-
-    // let mut py = 0;
-
-    // for _i in 0..length {
-    //     let c = skele_color;
-
-    //     // let bright = (1.0 - (error as f32 / e_minor as f32 * 255.0)).abs() as u32;
-
-    //     // let c = Rgb888::new(
-    //     //     ((bright * skele_color.r() as u32) / 255) as u8,
-    //     //     ((bright * skele_color.g() as u32) / 255) as u8,
-    //     //     ((bright * skele_color.b() as u32) / 255) as u8,
-    //     // );
-
-    //     Pixel(Point::new(point.x, orig_start_y + (py >> 8)), c).draw(display)?;
-
-    //     println!("{}", (error as f32) / threshold as f32);
-
-    //     if error > threshold {
-    //         py += 1 << 8;
-    //         error += e_minor;
-    //     }
-
-    //     error += e_major;
-    //     point.x += 1;
-    // }
 
     Ok(())
 }
