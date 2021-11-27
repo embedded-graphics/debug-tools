@@ -2,45 +2,38 @@
 //!
 //! Inspiration from <https://computergraphics.stackexchange.com/a/10675>
 
+use core::convert::TryFrom;
 use embedded_graphics::{
     mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
 
-#[derive(Debug, Clone, Copy)]
-struct MajorMinor<T> {
-    major: T,
-    minor: T,
-}
-
-impl<T> MajorMinor<T> {
-    fn new(major: T, minor: T) -> Self {
-        Self { major, minor }
-    }
-}
-
 fn thick_line(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    mut line: Line,
+    line: Line,
     _width: i32,
 ) -> Result<(), std::convert::Infallible> {
     let skele_color = Rgb888::MAGENTA;
-
-    // let Line { start, end } = line;
-
-    let orig_start_y = line.start.y;
-
-    // line.start.y <<= 8;
-    // line.end.y <<= 8;
 
     let delta = line.delta();
 
     let dx = delta.x;
     let dy = delta.y;
 
-    let slope = (dy * 255) as f32 / dx as f32;
-    dbg!(slope);
+    let num = dy * 255;
+    let denom = dx;
+    // Rounding integer division
+    let slope = ((num) + (denom) / 2) / (denom);
+
+    let slope = if let Ok(slope) = u8::try_from(slope) {
+        slope
+    } else {
+        // Most likely cause: gradient is incorrect due to improper swapping of major/minor
+        // direction. The slope should always be 1.0 or less, or because we multiply by 255 in this
+        // case, 255 or less.
+        return Ok(());
+    };
 
     let mut point = line.start;
 
@@ -53,26 +46,10 @@ fn thick_line(
     let e_major = 2 * dy;
 
     // TODO: Calculate initial brightness
-    let mut br = 255.0;
+    let mut br: u8 = 255;
 
     for _i in 0..=dx {
-        let c = skele_color;
-
-        // let bright = (1.0 - (error as f32 / e_minor as f32 * 255.0)).abs() as u32;
-
-        let e = error.abs();
-
-        // let bright = f32::fract(e_major as f32 / e as f32);
-
-        // let bright = e as f32 / (dx as f32);
-
-        // dbg!(e, br);
-
-        // let bright = br;
-
         // AA point above line
-        // let bright = ((1.0 - e) * 255.0) as u32;
-        // let bright = (bright * 255.0) as u32;
         let bright = br as u32;
         let c = Rgb888::new(
             ((bright * skele_color.r() as u32) / 255) as u8,
@@ -91,18 +68,15 @@ fn thick_line(
         );
         Pixel(Point::new(point.x, point.y), c).draw(display)?;
 
-        // error += slope;
-
         if error > threshold {
             point.y += 1;
-            // error = 0.0;
             error += e_minor;
-            br = 255.0;
+            br = 255;
         }
 
         error += e_major;
         point.x += 1;
-        br -= slope;
+        br = br.saturating_sub(slope);
     }
 
     Ok(())
