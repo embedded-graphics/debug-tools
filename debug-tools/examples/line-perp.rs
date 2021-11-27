@@ -82,7 +82,7 @@ fn perpendicular(
     step: MajorMinor<Point>,
     einit: i32,
     width: i32,
-    _winit: i32,
+    winit: i32,
     extra: bool,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = Point::new(x0, y0);
@@ -133,8 +133,24 @@ fn perpendicular(
     error += e_major;
     point += step.minor;
 
+    println!("---");
+
+    // let mut wthr = width as f32 * f32::sqrt(dx.pow(2) as f32 + dy.pow(2) as f32);
+    // // TODO: init terms
+    // let mut tk = dx as f32 + dy as f32 - winit as f32;
+
+    // dbg!(wthr);
+
+    let mut distance = 0.0;
+    let slope = dy as f32 / dx as f32;
+
+    dbg!(slope);
+
+    // while tk <= wthr {
     loop {
         let is_outside = le.check_side(point, side_check_left);
+
+        dbg!(error, threshold);
 
         if is_outside {
             break;
@@ -142,18 +158,32 @@ fn perpendicular(
 
         Pixel(point, c_left).draw(display)?;
 
+        distance += slope;
+
         if error > threshold {
             point += step.major;
             error += e_minor;
+            // tk += 2.0 * dy as f32
         }
 
         error += e_major;
         point += step.minor;
+        // tk += 2.0 * dx as f32;
+
+        // dbg!(tk);
+
+        // if tk > wthr {
+        //     break;
+        // }
     }
+
+    dbg!(distance);
 
     // Last pixel, AA
     {
         let d = dist(left_extent, point);
+
+        dbg!(d);
 
         let fract = 1.0 - d;
 
@@ -198,29 +228,29 @@ fn perpendicular(
         point -= step.minor;
     }
 
-    // Last pixel, AA
-    {
-        let d = dist(right_extent, point);
+    // // Last pixel, AA
+    // {
+    //     let d = dist(right_extent, point);
 
-        let fract = 1.0 - d;
+    //     let fract = 1.0 - d;
 
-        let fract = (fract * 255.0) as i32;
+    //     let fract = (fract * 255.0) as i32;
 
-        // Don't draw any pixels that are too far away from the line
-        if fract > 0 {
-            let fract = fract as u32;
+    //     // Don't draw any pixels that are too far away from the line
+    //     if fract > 0 {
+    //         let fract = fract as u32;
 
-            Pixel(
-                point,
-                Rgb888::new(
-                    ((fract * c_right.r() as u32) / 255) as u8,
-                    ((fract * c_right.g() as u32) / 255) as u8,
-                    ((fract * c_right.b() as u32) / 255) as u8,
-                ),
-            )
-            .draw(display)?;
-        }
-    }
+    //         Pixel(
+    //             point,
+    //             Rgb888::new(
+    //                 ((fract * c_right.r() as u32) / 255) as u8,
+    //                 ((fract * c_right.g() as u32) / 255) as u8,
+    //                 ((fract * c_right.b() as u32) / 255) as u8,
+    //             ),
+    //         )
+    //         .draw(display)?;
+    //     }
+    // }
 
     Ok(())
 }
