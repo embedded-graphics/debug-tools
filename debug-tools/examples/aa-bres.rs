@@ -47,8 +47,10 @@ fn thick_line(
 
     // TODO: Calculate initial brightness
     let mut br: u8 = 255;
+    dbg!(slope);
 
     for _i in 0..=dx {
+        // println!("{} {}", br, error);
         // AA point above
         let bright = br as u32;
         let c = Rgb888::new(
@@ -58,14 +60,14 @@ fn thick_line(
         );
         Pixel(Point::new(point.x, point.y - 1), c).draw(display)?;
 
-        // AA point below
-        let bright = (255 - br) as u32;
-        let c = Rgb888::new(
-            ((bright * skele_color.r() as u32) / 255) as u8,
-            ((bright * skele_color.g() as u32) / 255) as u8,
-            ((bright * skele_color.b() as u32) / 255) as u8,
-        );
-        Pixel(Point::new(point.x, point.y + 1), c).draw(display)?;
+        // // AA point below
+        // let bright = (255 - br) as u32;
+        // let c = Rgb888::new(
+        //     ((bright * skele_color.r() as u32) / 255) as u8,
+        //     ((bright * skele_color.g() as u32) / 255) as u8,
+        //     ((bright * skele_color.b() as u32) / 255) as u8,
+        // );
+        // Pixel(Point::new(point.x, point.y + 1), c).draw(display)?;
 
         // Line skeleton
         // let bright = (e * 255.0) as u32;
