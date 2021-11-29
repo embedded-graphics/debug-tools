@@ -24,15 +24,15 @@ impl LineOffset {
         match width {
             width => {
                 match self {
-                    Self::Left => ((width * 2).saturating_sub(1), 0),
+                    Self::Left => (width.saturating_sub(1), 0),
                     Self::Center => {
                         let width = width.saturating_sub(1);
 
                         // Right-side bias for even width lines. Move mod2 to first item in the
                         // tuple to bias to the left instead.
-                        (width, width + (width % 2))
+                        (width / 2, width / 2 + (width % 2))
                     }
-                    Self::Right => ((width * 2).saturating_sub(1), 0),
+                    Self::Right => (width.saturating_sub(1), 0),
                 }
             }
         }
@@ -106,7 +106,9 @@ fn perpendicular(
     let dy = dy.abs();
 
     let threshold = dx - 2 * dy;
+    // E_diag
     let e_minor = -2 * dx;
+    // E_square
     let e_major = 2 * dy;
 
     let mut error = einit * sign;
@@ -125,44 +127,42 @@ fn perpendicular(
 
     let le = LinearEquation::from_line(&left_extent);
 
-    // Skip first iteration
-    if error > threshold {
-        point += step.major;
-        error += e_minor;
-    }
-    error += e_major;
-    point += step.minor;
+    // // Skip first iteration
+    // if error > threshold {
+    //     point += step.major;
+    //     error += e_minor;
+    // }
+    // error += e_major;
+    // point += step.minor;
 
-    // let mut wthr = width as f32 * f32::sqrt(dx.pow(2) as f32 + dy.pow(2) as f32);
-    // // TODO: init terms
-    // let mut tk = dx as f32 + dy as f32 - winit as f32;
+    let wthr = width.pow(2) * (dx.pow(2) + dy.pow(2));
+    let mut tk = dx + dy - (winit * sign);
 
     // dbg!(wthr);
 
-    let mut distance = 0.0;
     let slope = dy as f32 / dx as f32;
 
-    // while tk <= wthr {
-    loop {
-        let is_outside = le.check_side(point, side_check_left);
+    println!("--");
 
-        if is_outside {
-            break;
-        }
+    while tk.pow(2) <= wthr {
+        // loop {
+        // let is_outside = le.check_side(point, side_check_left);
+
+        // if is_outside {
+        //     break;
+        // }
 
         Pixel(point, c_left).draw(display)?;
-
-        distance += slope;
 
         if error > threshold {
             point += step.major;
             error += e_minor;
-            // tk += 2.0 * dy as f32
+            tk += 2 * dy
         }
 
         error += e_major;
         point += step.minor;
-        // tk += 2.0 * dx as f32;
+        tk += 2 * dx;
 
         // dbg!(tk);
 
@@ -171,51 +171,58 @@ fn perpendicular(
         // }
     }
 
-    // Last pixel, AA
-    {
-        let d = dist(left_extent, point);
+    let d1 = dist(_line, point);
+    let d2 = dist(left_extent, point);
 
-        let fract = 1.0 - d;
+    // // Last pixel, AA
+    // {
+    //     let d = dist(left_extent, point);
 
-        let fract = (fract * 255.0) as i32;
+    //     let fract = 1.0 - d;
 
-        // Don't draw any pixels that are too far away from the line
-        if fract > 0 {
-            let fract = fract as u32;
+    //     let fract = (fract * 255.0) as i32;
 
-            Pixel(
-                point,
-                Rgb888::new(
-                    ((fract * c_left.r() as u32) / 255) as u8,
-                    ((fract * c_left.g() as u32) / 255) as u8,
-                    ((fract * c_left.b() as u32) / 255) as u8,
-                ),
-            )
-            .draw(display)?;
-        }
-    }
+    //     // Don't draw any pixels that are too far away from the line
+    //     if fract > 0 {
+    //         let fract = fract as u32;
+
+    //         Pixel(
+    //             point,
+    //             Rgb888::new(
+    //                 ((fract * c_left.r() as u32) / 255) as u8,
+    //                 ((fract * c_left.g() as u32) / 255) as u8,
+    //                 ((fract * c_left.b() as u32) / 255) as u8,
+    //             ),
+    //         )
+    //         .draw(display)?;
+    //     }
+    // }
 
     let mut point = Point::new(x0, y0);
     let mut error = einit * -sign;
 
     let le = LinearEquation::from_line(&right_extent);
 
-    loop {
-        let is_outside = le.check_side(point, side_check_right);
+    let mut tk = dx + dy + (winit * sign);
 
-        if is_outside {
-            break;
-        }
+    while tk.pow(2) <= wthr {
+        // let is_outside = le.check_side(point, side_check_right);
+
+        // if is_outside {
+        //     break;
+        // }
 
         Pixel(point, c_right).draw(display)?;
 
         if error > threshold {
             point -= step.major;
             error += e_minor;
+            tk += 2 * dy;
         }
 
         error += e_major;
         point -= step.minor;
+        tk += 2 * dx;
     }
 
     // // Last pixel, AA
