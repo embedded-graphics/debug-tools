@@ -133,8 +133,6 @@ fn perpendicular(
     error += e_major;
     point += step.minor;
 
-    println!("---");
-
     // let mut wthr = width as f32 * f32::sqrt(dx.pow(2) as f32 + dy.pow(2) as f32);
     // // TODO: init terms
     // let mut tk = dx as f32 + dy as f32 - winit as f32;
@@ -144,13 +142,9 @@ fn perpendicular(
     let mut distance = 0.0;
     let slope = dy as f32 / dx as f32;
 
-    dbg!(slope);
-
     // while tk <= wthr {
     loop {
         let is_outside = le.check_side(point, side_check_left);
-
-        dbg!(error, threshold);
 
         if is_outside {
             break;
@@ -177,13 +171,9 @@ fn perpendicular(
         // }
     }
 
-    dbg!(distance);
-
     // Last pixel, AA
     {
         let d = dist(left_extent, point);
-
-        dbg!(d);
 
         let fract = 1.0 - d;
 
