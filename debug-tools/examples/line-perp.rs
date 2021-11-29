@@ -137,6 +137,7 @@ fn perpendicular(
 
     let wthr = width.pow(2) * (dx.pow(2) + dy.pow(2));
     let mut tk = dx + dy - (winit * sign);
+    // let mut tk: i32 = 0;
 
     // dbg!(wthr);
 
@@ -144,7 +145,14 @@ fn perpendicular(
 
     println!("--");
 
-    while tk.pow(2) <= wthr {
+    let line_len = f32::sqrt(_line.delta().length_squared() as f32);
+    let le = LinearEquation::from_line(&_line);
+    let le_left = LinearEquation::from_line(&left_extent);
+
+    // dbg!(line_len);
+
+    // while tk.pow(2) <= wthr {
+    while le_left.distance(point) <= 0 {
         // loop {
         // let is_outside = le.check_side(point, side_check_left);
 
@@ -152,12 +160,48 @@ fn perpendicular(
         //     break;
         // }
 
-        Pixel(point, c_left).draw(display)?;
+        // Pixel(point, c_left).draw(display)?;
+
+        let dist_from_center = le.distance(point) as f32 / line_len;
+
+        // dbg!(le.distance(point), le_left.distance(point), ass, _width_l);
+
+        // dbg!(_width_l);
+
+        {
+            // let fract = _width_l as f32 - dist_from_center;
+
+            // dbg!(dist_from_center);
+
+            // let fract = (fract.abs().max(1.0)) * 255.0;
+
+            let fract = if dist_from_center <= _width_l as f32 {
+                1.0
+            } else if dist_from_center - _width_l as f32 <= 1.0 {
+                1.0 - dist_from_center.fract()
+            } else {
+                0.0
+            };
+
+            let fract = fract * 255.0;
+
+            let fract = fract as u32;
+
+            Pixel(
+                point,
+                Rgb888::new(
+                    ((fract * c_left.r() as u32) / 255) as u8,
+                    ((fract * c_left.g() as u32) / 255) as u8,
+                    ((fract * c_left.b() as u32) / 255) as u8,
+                ),
+            )
+            .draw(display)?;
+        }
 
         if error > threshold {
             point += step.major;
             error += e_minor;
-            tk += 2 * dy
+            tk += 2 * dy;
         }
 
         error += e_major;
@@ -171,37 +215,47 @@ fn perpendicular(
         // }
     }
 
-    let d1 = dist(_line, point);
-    let d2 = dist(left_extent, point);
+    // let ass = le.distance(point) as f32 / line_len;
+    // dbg!(ass);
+
+    // // point += step.minor;
+    // // point += step.minor;
+
+    // // let accum_dist = f32::sqrt((accum_x.pow(2) + accum_y.pow(2)) as f32);
 
     // // Last pixel, AA
     // {
     //     let d = dist(left_extent, point);
 
-    //     let fract = 1.0 - d;
+    //     // dbg!(d, dist(_line, point).fract(), (tk as f32).sqrt().fract());
+
+    //     // dbg!(d, dist(_line, point));
+
+    //     let fract = 1.0 - d.min(1.0);
+    //     // let fract = 1.0 - dist(_line, point).fract();
+    //     let fract = 1.0 - ass.fract();
 
     //     let fract = (fract * 255.0) as i32;
 
     //     // Don't draw any pixels that are too far away from the line
-    //     if fract > 0 {
-    //         let fract = fract as u32;
+    //     // if fract > 0 {
+    //     let fract = fract as u32;
 
-    //         Pixel(
-    //             point,
-    //             Rgb888::new(
-    //                 ((fract * c_left.r() as u32) / 255) as u8,
-    //                 ((fract * c_left.g() as u32) / 255) as u8,
-    //                 ((fract * c_left.b() as u32) / 255) as u8,
-    //             ),
-    //         )
-    //         .draw(display)?;
-    //     }
+    //     Pixel(
+    //         point,
+    //         Rgb888::new(
+    //             ((fract * c_left.r() as u32) / 255) as u8,
+    //             ((fract * c_left.g() as u32) / 255) as u8,
+    //             ((fract * c_left.b() as u32) / 255) as u8,
+    //         ),
+    //     )
+    //     .draw(display)?;
     // }
 
     let mut point = Point::new(x0, y0);
     let mut error = einit * -sign;
 
-    let le = LinearEquation::from_line(&right_extent);
+    // let le = LinearEquation::from_line(&right_extent);
 
     let mut tk = dx + dy + (winit * sign);
 
