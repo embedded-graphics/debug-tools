@@ -6,7 +6,7 @@ use embedded_graphics::{
     primitives::{
         common::{LineSide, LinearEquation},
         line::StrokeOffset,
-        Line,
+        Line, PrimitiveStyle,
     },
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
@@ -181,22 +181,18 @@ fn perpendicular(
 
     // dbg!(wthr);
 
-    let slope = dy as f32 / dx as f32;
-
     println!("===");
 
-    let line_len_sq = line.delta().length_squared() as f32;
-    let line_len = f32::sqrt(line_len_sq);
-    let le = LinearEquation::from_line(&line);
-    let le_left = LinearEquation::from_line(&left_extent);
-
+    // Perpendicular iteration
     while tk.pow(2) <= wthr {
-        let distance = dist_255(line, point);
+        // NOTE: dist_255 has numerical innaccuraccies with very short lines
+        // let distance = dist_255(line, point);
+        let distance = dist(line, point) * 255.0;
 
-        let fract = if distance < _width_l as u32 * 255 {
+        let fract = if distance < _width_l as f32 * 255.0 {
             255
         } else {
-            255 - distance % 255
+            255 - (distance % 255.0) as u32
         };
 
         let c = Rgb888::new(
@@ -218,7 +214,7 @@ fn perpendicular(
         tk += 2 * dx;
     }
 
-    // Iterating along left extent and setting brightness based on distance to center
+    // Iterating along left extent and setting brightness based on gradient
     // {
     //     let Line { start, end } = left_extent;
 
@@ -255,27 +251,19 @@ fn perpendicular(
     //     let e_major = 2 * dy;
     //     let length = dx + 1;
 
-    //     let mut bright: u32 = 255;
-    //     let mut bright_step = 10;
+    //     let mut bright = 1.0f32;
+    //     let gradient = dy as f32 / dx as f32;
 
     //     for _i in 0..length {
-    //         let fract: u32 = 255;
+    //         // let fract: u32 = 255;
 
-    //         // let fract = bright;
+    //         let fract = (255.0 * bright) as u32;
 
-    //         let distance = dist(line, point);
+    //         bright -= gradient;
 
-    //         dbg!(distance);
-
-    //         let fract = if (distance.floor() as i32) < _width_l {
-    //             255
-    //         } else {
-    //             255 - (distance.fract() * 255.0).round() as u32
-    //         };
-
-    //         // let fract: u32 = distance.abs() as u32;
-
-    //         dbg!(fract);
+    //         if bright < 0.0 {
+    //             bright = 1.0;
+    //         }
 
     //         let c = Rgb888::new(
     //             ((fract * c_left.r() as u32) / 255) as u8,
@@ -288,12 +276,10 @@ fn perpendicular(
     //         if error > threshold {
     //             point += step.minor;
     //             error += e_minor;
-    //             bright = 255;
     //         }
 
     //         error += e_major;
     //         point += step.major;
-    //         bright = bright.saturating_sub(bright_step);
     //     }
     // }
 
