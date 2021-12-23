@@ -9,3 +9,4 @@ publish = false
 framework = { path = "../framework" }
 embedded-graphics = { version = "0.7.1", path = "../../embedded-graphics" }
 embedded-graphics-simulator = { version = "0.3.0", path = "../../simulator" }
+integer-sqrt = "0.1.5"
