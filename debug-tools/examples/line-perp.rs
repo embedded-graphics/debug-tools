@@ -75,31 +75,40 @@ fn dist(line: Line, point: Point) -> f32 {
 
 /// Like `dist` but result is multiplied by 255.
 fn dist_255(line: Line, point: Point) -> u32 {
-    let Line {
-        start: Point { x: x1, y: y1 },
-        end: Point { x: x2, y: y2 },
-    } = line;
-    let Point { x: x3, y: y3 } = point;
-
-    let x1 = x1 * 255;
-    let y1 = y1 * 255;
-    let x2 = x2 * 255;
-    let y2 = y2 * 255;
-    let x3 = x3 * 255;
-    let y3 = y3 * 255;
+    // let Line {
+    //     start: Point { x: x1, y: y1 },
+    //     end: Point { x: x2, y: y2 },
+    // } = line;
+    // let Point { x: x3, y: y3 } = point;
 
     let delta = line.end - line.start;
 
-    let denom = delta.x.pow(2) + delta.y.pow(2);
+    let le = LinearEquation::from_line(&line);
+    let le_dist = le.distance(point).abs() as u32;
+    let len = delta.length_squared() as u32;
+    let le_dist = le_dist * 255 / u32::integer_sqrt(&len);
 
-    let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) / denom;
+    le_dist
 
-    let x = x1 + u * (x2 - x1);
-    let y = y1 + u * (y2 - y1);
+    // let x1 = x1 * 255;
+    // let y1 = y1 * 255;
+    // let x2 = x2 * 255;
+    // let y2 = y2 * 255;
+    // let x3 = x3 * 255;
+    // let y3 = y3 * 255;
 
-    let dist = u32::integer_sqrt(&((x - x3).pow(2) as u32 + (y - y3).pow(2) as u32));
+    // let delta = line.end - line.start;
 
-    dist
+    // let denom = delta.x.pow(2) + delta.y.pow(2);
+
+    // let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) / denom;
+
+    // let x = x1 + u * (x2 - x1);
+    // let y = y1 + u * (y2 - y1);
+
+    // let dist = u32::integer_sqrt(&((x - x3).pow(2) as u32 + (y - y3).pow(2) as u32));
+
+    // dist
 }
 
 fn perpendicular(
@@ -182,17 +191,13 @@ fn perpendicular(
     let le_left = LinearEquation::from_line(&left_extent);
 
     while tk.pow(2) <= wthr {
-        let distance = dist(line, point);
+        let distance = dist_255(line, point);
 
-        dbg!(distance);
-
-        let fract = if (distance.floor() as i32) < _width_l {
+        let fract = if distance < _width_l as u32 * 255 {
             255
         } else {
-            255 - (distance.fract() * 255.0).round() as u32
+            255 - distance % 255
         };
-
-        dbg!(fract);
 
         let c = Rgb888::new(
             ((fract * c_left.r() as u32) / 255) as u8,
