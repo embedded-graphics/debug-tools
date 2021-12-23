@@ -162,18 +162,6 @@ fn perpendicular(
         (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
     };
 
-    // let (c_left, c_right) = (Rgb888::GREEN, Rgb888::GREEN);
-
-    let le = LinearEquation::from_line(&left_extent);
-
-    // // Skip first iteration
-    // if error > threshold {
-    //     point += step.major;
-    //     error += e_minor;
-    // }
-    // error += e_major;
-    // point += step.minor;
-
     // Add one to width so we get an extra iteration for the AA edge
     let wthr = (width + 1).pow(2) * (dx.pow(2) + dy.pow(2));
     let mut tk = dx + dy - (winit * sign);
@@ -181,7 +169,7 @@ fn perpendicular(
 
     // dbg!(wthr);
 
-    println!("===");
+    // println!("===");
 
     // Perpendicular iteration
     while tk.pow(2) <= wthr {
@@ -214,183 +202,12 @@ fn perpendicular(
         tk += 2 * dx;
     }
 
-    // Iterating along left extent and setting brightness based on gradient
-    // {
-    //     let Line { start, end } = left_extent;
-
-    //     let (delta, step) = {
-    //         let delta = end - start;
-
-    //         let direction = Point::new(
-    //             if delta.x >= 0 { 1 } else { -1 },
-    //             if delta.y >= 0 { 1 } else { -1 },
-    //         );
-
-    //         // Determine major and minor directions.
-    //         if delta.y.abs() >= delta.x.abs() {
-    //             (
-    //                 MajorMinor::new(delta.y, delta.x),
-    //                 MajorMinor::new(direction.y_axis(), direction.x_axis()),
-    //             )
-    //         } else {
-    //             (
-    //                 MajorMinor::new(delta.x, delta.y),
-    //                 MajorMinor::new(direction.x_axis(), direction.y_axis()),
-    //             )
-    //         }
-    //     };
-
-    //     let mut error = 0;
-    //     let mut point = start;
-
-    //     let dx = delta.major.abs();
-    //     let dy = delta.minor.abs();
-
-    //     let threshold = dx - 2 * dy;
-    //     let e_minor = -2 * dx;
-    //     let e_major = 2 * dy;
-    //     let length = dx + 1;
-
-    //     let mut bright = 1.0f32;
-    //     let gradient = dy as f32 / dx as f32;
-
-    //     for _i in 0..length {
-    //         // let fract: u32 = 255;
-
-    //         let fract = (255.0 * bright) as u32;
-
-    //         bright -= gradient;
-
-    //         if bright < 0.0 {
-    //             bright = 1.0;
-    //         }
-
-    //         let c = Rgb888::new(
-    //             ((fract * c_left.r() as u32) / 255) as u8,
-    //             ((fract * c_left.g() as u32) / 255) as u8,
-    //             ((fract * c_left.b() as u32) / 255) as u8,
-    //         );
-
-    //         Pixel(point, c).draw(display)?;
-
-    //         if error > threshold {
-    //             point += step.minor;
-    //             error += e_minor;
-    //         }
-
-    //         error += e_major;
-    //         point += step.major;
-    //     }
-    // }
-
-    // for point in left_extent.points() {
-    //     let dist = le_left.distance(point) as f32 / line_len;
-    //     // let dist_scaled = 1.0;
-    //     let dist_scaled = dist.abs();
-
-    //     dbg!(dist, dist_scaled);
-
-    //     let fract = (dist_scaled * 255.0) as u32;
-
-    //     let c = Rgb888::new(
-    //         ((fract * c_left.r() as u32) / 255) as u8,
-    //         ((fract * c_left.g() as u32) / 255) as u8,
-    //         ((fract * c_left.b() as u32) / 255) as u8,
-    //     );
-
-    //     Pixel(point, c).draw(display)?;
-    // }
-
-    // dbg!(line_len);
-
-    let mut x_accum: u32 = 0;
-    let mut y_accum: u32 = 0;
-
-    while tk.pow(2) <= wthr {
-        // println!("--");
-
-        // Pixel(point, c_left).draw(display)?;
-
-        // {
-        //     let fract = 255;
-
-        //     let fract = fract as u32;
-
-        //     Pixel(
-        //         point,
-        //         Rgb888::new(
-        //             ((fract * c_left.r() as u32) / 255) as u8,
-        //             ((fract * c_left.g() as u32) / 255) as u8,
-        //             ((fract * c_left.b() as u32) / 255) as u8,
-        //         ),
-        //     )
-        //     .draw(display)?;
-        // }
-
-        if error > threshold {
-            point += step.major;
-            error += e_minor;
-            tk += 2 * dy;
-            y_accum += 1;
-        }
-
-        error += e_major;
-        point += step.minor;
-        tk += 2 * dx;
-        x_accum += 1;
-    }
-
-    // let ass = le.distance(point) as f32 / line_len;
-    // dbg!(ass);
-
-    // // point += step.minor;
-    // // point += step.minor;
-
-    // // let accum_dist = f32::sqrt((accum_x.pow(2) + accum_y.pow(2)) as f32);
-
-    // // Last pixel, AA
-    // {
-    //     let d = dist(left_extent, point);
-
-    //     // dbg!(d, dist(line, point).fract(), (tk as f32).sqrt().fract());
-
-    //     // dbg!(d, dist(line, point));
-
-    //     let fract = 1.0 - d.min(1.0);
-    //     // let fract = 1.0 - dist(line, point).fract();
-    //     let fract = 1.0 - ass.fract();
-
-    //     let fract = (fract * 255.0) as i32;
-
-    //     // Don't draw any pixels that are too far away from the line
-    //     // if fract > 0 {
-    //     let fract = fract as u32;
-
-    //     Pixel(
-    //         point,
-    //         Rgb888::new(
-    //             ((fract * c_left.r() as u32) / 255) as u8,
-    //             ((fract * c_left.g() as u32) / 255) as u8,
-    //             ((fract * c_left.b() as u32) / 255) as u8,
-    //         ),
-    //     )
-    //     .draw(display)?;
-    // }
-
     let mut point = Point::new(x0, y0);
     let mut error = einit * -sign;
-
-    // let le = LinearEquation::from_line(&right_extent);
 
     let mut tk = dx + dy + (winit * sign);
 
     while tk.pow(2) <= wthr {
-        // let is_outside = le.check_side(point, side_check_right);
-
-        // if is_outside {
-        //     break;
-        // }
-
         Pixel(point, c_right).draw(display)?;
 
         if error > threshold {
@@ -403,30 +220,6 @@ fn perpendicular(
         point -= step.minor;
         tk += 2 * dx;
     }
-
-    // // Last pixel, AA
-    // {
-    //     let d = dist(right_extent, point);
-
-    //     let fract = 1.0 - d;
-
-    //     let fract = (fract * 255.0) as i32;
-
-    //     // Don't draw any pixels that are too far away from the line
-    //     if fract > 0 {
-    //         let fract = fract as u32;
-
-    //         Pixel(
-    //             point,
-    //             Rgb888::new(
-    //                 ((fract * c_right.r() as u32) / 255) as u8,
-    //                 ((fract * c_right.g() as u32) / 255) as u8,
-    //                 ((fract * c_right.b() as u32) / 255) as u8,
-    //             ),
-    //         )
-    //         .draw(display)?;
-    //     }
-    // }
 
     Ok(())
 }
