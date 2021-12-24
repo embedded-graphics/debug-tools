@@ -52,25 +52,45 @@ impl<T> MajorMinor<T> {
     }
 }
 
+// fn dist(line: Line, point: Point) -> f32 {
+//     let Line {
+//         start: Point { x: x1, y: y1 },
+//         end: Point { x: x2, y: y2 },
+//     } = line;
+//     let Point { x: x3, y: y3 } = point;
+
+//     let delta = line.end - line.start;
+
+//     let denom = (delta.x.pow(2) + delta.y.pow(2)) as f32;
+
+//     let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) as f32 / denom;
+
+//     let x = x1 as f32 + u * (x2 - x1) as f32;
+//     let y = y1 as f32 + u * (y2 - y1) as f32;
+
+//     let dist = f32::sqrt((x - x3 as f32).powi(2) + (y - y3 as f32).powi(2));
+
+//     dist
+// }
+
+// From <https://gist.github.com/rhyolight/2846020>, linked from <https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment#comment30489239_849211>
 fn dist(line: Line, point: Point) -> f32 {
-    let Line {
-        start: Point { x: x1, y: y1 },
-        end: Point { x: x2, y: y2 },
-    } = line;
-    let Point { x: x3, y: y3 } = point;
+    let Line { start, .. } = line;
 
-    let delta = line.end - line.start;
+    let Point {
+        x: point_x,
+        y: point_y,
+    } = point;
 
-    let denom = (delta.x.pow(2) + delta.y.pow(2)) as f32;
+    let point_x = point_x as f32;
+    let point_y = point_y as f32;
 
-    let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) as f32 / denom;
+    let delta = line.delta();
 
-    let x = x1 as f32 + u * (x2 - x1) as f32;
-    let y = y1 as f32 + u * (y2 - y1) as f32;
+    let slope = delta.y as f32 / delta.x as f32;
+    let intercept = start.y as f32 - (slope * start.x as f32);
 
-    let dist = f32::sqrt((x - x3 as f32).powi(2) + (y - y3 as f32).powi(2));
-
-    dist
+    f32::abs(slope * point_x - point_y + intercept) / f32::sqrt(slope.powi(2) + 1.0)
 }
 
 /// Like `dist` but result is multiplied by 255.
