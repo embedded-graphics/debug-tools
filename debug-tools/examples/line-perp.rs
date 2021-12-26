@@ -131,24 +131,10 @@ fn perpendicular(
 
     // dbg!(wthr);
 
-    println!("===");
+    // println!("===");
 
     // Perpendicular iteration
     while tk.pow(2) <= wthr {
-        // let distance = dist(line, point) * 255.0;
-
-        // let fract = if distance < _width_l as f32 * 255.0 {
-        //     255
-        // } else {
-        //     255 - (distance % 255.0) as u32
-        // };
-
-        // let c = Rgb888::new(
-        //     ((fract * c_left.r() as u32) / 255) as u8,
-        //     ((fract * c_left.g() as u32) / 255) as u8,
-        //     ((fract * c_left.b() as u32) / 255) as u8,
-        // );
-
         Pixel(point, c_left).draw(display)?;
 
         if error > threshold {
@@ -162,13 +148,9 @@ fn perpendicular(
         tk += 2 * dx;
 
         if tk.pow(2) > wthr {
-            // dbg!(tk, wthr, tk.pow(2) as f32 / wthr as f32);
-            let fract = tk.pow(2) as f32 / (wthr / 2) as f32;
-
-            // dbg!(fract);
-            let fract = fract.min(2.99999);
-
-            let fract = 255 - (fract.fract() * 255.0) as u32;
+            let fract = tk.pow(2) * 255 / (wthr / 2);
+            let fract = fract.min(255 * 3 - 1);
+            let fract = 255 - (fract % 255) as u32;
 
             let c = Rgb888::new(
                 ((fract * c_left.r() as u32) / 255) as u8,
