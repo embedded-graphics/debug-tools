@@ -52,28 +52,7 @@ impl<T> MajorMinor<T> {
     }
 }
 
-// fn dist(line: Line, point: Point) -> f32 {
-//     let Line {
-//         start: Point { x: x1, y: y1 },
-//         end: Point { x: x2, y: y2 },
-//     } = line;
-//     let Point { x: x3, y: y3 } = point;
-
-//     let delta = line.end - line.start;
-
-//     let denom = (delta.x.pow(2) + delta.y.pow(2)) as f32;
-
-//     let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) as f32 / denom;
-
-//     let x = x1 as f32 + u * (x2 - x1) as f32;
-//     let y = y1 as f32 + u * (y2 - y1) as f32;
-
-//     let dist = f32::sqrt((x - x3 as f32).powi(2) + (y - y3 as f32).powi(2));
-
-//     dist
-// }
-
-// From <https://gist.github.com/rhyolight/2846020>, linked from <https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment#comment30489239_849211>
+// From <https://gist.github.com/rhyolight/2846020>, linked from <https://stackoverflow.com/questions/849211#comment30489239_849211>
 fn dist(line: Line, point: Point) -> f32 {
     let Line { start, .. } = line;
 
@@ -91,44 +70,6 @@ fn dist(line: Line, point: Point) -> f32 {
     let intercept = start.y as f32 - (slope * start.x as f32);
 
     f32::abs(slope * point_x - point_y + intercept) / f32::sqrt(slope.powi(2) + 1.0)
-}
-
-/// Like `dist` but result is multiplied by 255.
-fn dist_255(line: Line, point: Point) -> u32 {
-    // let Line {
-    //     start: Point { x: x1, y: y1 },
-    //     end: Point { x: x2, y: y2 },
-    // } = line;
-    // let Point { x: x3, y: y3 } = point;
-
-    let delta = line.end - line.start;
-
-    let le = LinearEquation::from_line(&line);
-    let le_dist = le.distance(point).abs() as u32;
-    let len = delta.length_squared() as u32;
-    let le_dist = le_dist * 255 / u32::integer_sqrt(&len);
-
-    le_dist
-
-    // let x1 = x1 * 255;
-    // let y1 = y1 * 255;
-    // let x2 = x2 * 255;
-    // let y2 = y2 * 255;
-    // let x3 = x3 * 255;
-    // let y3 = y3 * 255;
-
-    // let delta = line.end - line.start;
-
-    // let denom = delta.x.pow(2) + delta.y.pow(2);
-
-    // let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) / denom;
-
-    // let x = x1 + u * (x2 - x1);
-    // let y = y1 + u * (y2 - y1);
-
-    // let dist = u32::integer_sqrt(&((x - x3).pow(2) as u32 + (y - y3).pow(2) as u32));
-
-    // dist
 }
 
 fn perpendicular(
@@ -184,32 +125,31 @@ fn perpendicular(
 
     // Add one to width so we get an extra iteration for the AA edge
     let wthr = (width + 1).pow(2) * (dx.pow(2) + dy.pow(2));
-    let mut tk = dx + dy - (winit * sign);
+    let init_offset = dx + dy - (winit * sign);
+    let mut tk = init_offset;
     // let mut tk: i32 = 0;
 
     // dbg!(wthr);
 
-    // println!("===");
+    println!("===");
 
     // Perpendicular iteration
     while tk.pow(2) <= wthr {
-        // NOTE: dist_255 has numerical innaccuraccies with very short lines
-        // let distance = dist_255(line, point);
-        let distance = dist(line, point) * 255.0;
+        // let distance = dist(line, point) * 255.0;
 
-        let fract = if distance < _width_l as f32 * 255.0 {
-            255
-        } else {
-            255 - (distance % 255.0) as u32
-        };
+        // let fract = if distance < _width_l as f32 * 255.0 {
+        //     255
+        // } else {
+        //     255 - (distance % 255.0) as u32
+        // };
 
-        let c = Rgb888::new(
-            ((fract * c_left.r() as u32) / 255) as u8,
-            ((fract * c_left.g() as u32) / 255) as u8,
-            ((fract * c_left.b() as u32) / 255) as u8,
-        );
+        // let c = Rgb888::new(
+        //     ((fract * c_left.r() as u32) / 255) as u8,
+        //     ((fract * c_left.g() as u32) / 255) as u8,
+        //     ((fract * c_left.b() as u32) / 255) as u8,
+        // );
 
-        Pixel(point, c).draw(display)?;
+        Pixel(point, c_left).draw(display)?;
 
         if error > threshold {
             point += step.major;
@@ -220,6 +160,24 @@ fn perpendicular(
         error += e_major;
         point += step.minor;
         tk += 2 * dx;
+
+        if tk.pow(2) > wthr {
+            // dbg!(tk, wthr, tk.pow(2) as f32 / wthr as f32);
+            let fract = tk.pow(2) as f32 / (wthr / 2) as f32;
+
+            // dbg!(fract);
+            let fract = fract.min(2.99999);
+
+            let fract = 255 - (fract.fract() * 255.0) as u32;
+
+            let c = Rgb888::new(
+                ((fract * c_left.r() as u32) / 255) as u8,
+                ((fract * c_left.g() as u32) / 255) as u8,
+                ((fract * c_left.b() as u32) / 255) as u8,
+            );
+
+            Pixel(point, c).draw(display)?;
+        }
     }
 
     let mut point = Point::new(x0, y0);
