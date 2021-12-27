@@ -123,6 +123,7 @@ fn perpendicular(
         (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
     };
     let c_left = Rgb888::WHITE;
+    let c_right = c_left;
 
     // Add one to width so we get an extra iteration for the AA edge
     let wthr = (width + 1).pow(2) * (dx.pow(2) + dy.pow(2));
@@ -152,8 +153,21 @@ fn perpendicular(
             let fract = tk.pow(2) as u32 * 255 / (wthr as u32);
 
             let fract = {
-                let thickness_ratio = tk.pow(2) as f32 / (wthr as f32);
+                // There's this weird division of 1.5 to make the AA look correct. This magic value
+                // is the 8 bit scaler 255 / 1.5. I haven't got to the bottom of why it must be 1.5
+                // yet. Maybe something to do with Bresenham's errors being at most 0.5 away from
+                // pixel centers and everything being multiplied by 2?
+                let two_thirds_255 = 170.0;
+
+                // let thickness_ratio = tk.pow(2) as f32 / (wthr as f32);
+                let thickness_ratio = (tk.pow(2) as f32 * two_thirds_255) / (wthr as f32);
+                let thickness_ratio = thickness_ratio % two_thirds_255;
                 // let thickness_ratio = (fract % 255) as f32;
+                // dbg!(
+                //     fract,
+                //     thickness_ratio * 255.0,
+                //     (tk.pow(2) as f32 * 255.0) / (wthr as f32)
+                // );
 
                 // dbg!(fract, wthr * 255, wthr / (tk.pow(2) - wthr));
 
@@ -162,7 +176,7 @@ fn perpendicular(
 
                 // dbg!(thickness_ratio, dx, dy);
 
-                (255.0 - thickness_ratio.fract() * 255.0 * _width_l as f32 / 1.5) as u32
+                (255.0 - thickness_ratio * _width_l as f32) as u32
                 // (255.0 - thickness_ratio * _width_l as f32 / 1.5) as u32
             };
             // FIXME: Make it work with different widths. 10px wide lines only just happen to look
