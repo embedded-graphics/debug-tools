@@ -148,13 +148,22 @@ fn perpendicular(
         tk += 2 * dx;
 
         if tk.pow(2) > wthr {
-            let fract = tk.pow(2) as u32 * 255 / (wthr as u32 / width as u32);
+            let fract = tk.pow(2) as u32 * 255 / (wthr as u32);
 
-            dbg!(fract);
+            let fract = {
+                let thickness_ratio = tk.pow(2) as f32 / (wthr as f32);
+                // let slope = dy as f32 / dx as f32;
+
+                // dbg!(thickness_ratio);
+
+                (255.0 - thickness_ratio.fract() * 255.0 * _width_l as f32) as u32
+            };
             // FIXME: Make it work with different widths. 10px wide lines only just happen to look
             // right.
             // let fract = fract.min(255 * 3 - 1);
-            let fract = 255 - (fract % 255) as u32;
+            // let fract = 255 - (fract % 255) as u32;
+
+            // let fract = 255;
 
             let c = Rgb888::new(
                 ((fract * c_left.r() as u32) / 255) as u8,
