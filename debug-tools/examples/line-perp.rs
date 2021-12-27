@@ -131,7 +131,7 @@ fn perpendicular(
 
     // dbg!(wthr);
 
-    // println!("===");
+    println!("===");
 
     // Perpendicular iteration
     while tk.pow(2) <= wthr {
@@ -148,8 +148,12 @@ fn perpendicular(
         tk += 2 * dx;
 
         if tk.pow(2) > wthr {
-            let fract = tk.pow(2) * 255 / (wthr / 2);
-            let fract = fract.min(255 * 3 - 1);
+            let fract = tk.pow(2) as u32 * 255 / (wthr as u32 / width as u32);
+
+            dbg!(fract);
+            // FIXME: Make it work with different widths. 10px wide lines only just happen to look
+            // right.
+            // let fract = fract.min(255 * 3 - 1);
             let fract = 255 - (fract % 255) as u32;
 
             let c = Rgb888::new(
