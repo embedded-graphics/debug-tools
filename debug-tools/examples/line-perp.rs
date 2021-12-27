@@ -122,6 +122,7 @@ fn perpendicular(
     } else {
         (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
     };
+    let c_left = Rgb888::WHITE;
 
     // Add one to width so we get an extra iteration for the AA edge
     let wthr = (width + 1).pow(2) * (dx.pow(2) + dy.pow(2));
@@ -152,11 +153,17 @@ fn perpendicular(
 
             let fract = {
                 let thickness_ratio = tk.pow(2) as f32 / (wthr as f32);
-                // let slope = dy as f32 / dx as f32;
+                // let thickness_ratio = (fract % 255) as f32;
 
-                // dbg!(thickness_ratio);
+                // dbg!(fract, wthr * 255, wthr / (tk.pow(2) - wthr));
 
-                (255.0 - thickness_ratio.fract() * 255.0 * _width_l as f32) as u32
+                // let ass = wthr / (tk.pow(2) - wthr);
+                // dbg!(ass, thickness_ratio.fract() * 255.0);
+
+                // dbg!(thickness_ratio, dx, dy);
+
+                (255.0 - thickness_ratio.fract() * 255.0 * _width_l as f32 / 1.5) as u32
+                // (255.0 - thickness_ratio * _width_l as f32 / 1.5) as u32
             };
             // FIXME: Make it work with different widths. 10px wide lines only just happen to look
             // right.
