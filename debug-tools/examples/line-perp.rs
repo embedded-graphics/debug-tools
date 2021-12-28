@@ -159,32 +159,11 @@ fn perpendicular(
                 // pixel centers and everything being multiplied by 2?
                 let two_thirds_255 = 170.0;
 
-                // let thickness_ratio = tk.pow(2) as f32 / (wthr as f32);
                 let thickness_ratio = (tk.pow(2) as f32 * two_thirds_255) / (wthr as f32);
                 let thickness_ratio = thickness_ratio % two_thirds_255;
-                // let thickness_ratio = (fract % 255) as f32;
-                // dbg!(
-                //     fract,
-                //     thickness_ratio * 255.0,
-                //     (tk.pow(2) as f32 * 255.0) / (wthr as f32)
-                // );
-
-                // dbg!(fract, wthr * 255, wthr / (tk.pow(2) - wthr));
-
-                // let ass = wthr / (tk.pow(2) - wthr);
-                // dbg!(ass, thickness_ratio.fract() * 255.0);
-
-                // dbg!(thickness_ratio, dx, dy);
 
                 (255.0 - thickness_ratio * _width_l as f32) as u32
-                // (255.0 - thickness_ratio * _width_l as f32 / 1.5) as u32
             };
-            // FIXME: Make it work with different widths. 10px wide lines only just happen to look
-            // right.
-            // let fract = fract.min(255 * 3 - 1);
-            // let fract = 255 - (fract % 255) as u32;
-
-            // let fract = 255;
 
             let c = Rgb888::new(
                 ((fract * c_left.r() as u32) / 255) as u8,
