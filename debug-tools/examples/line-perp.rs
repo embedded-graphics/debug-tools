@@ -52,24 +52,64 @@ impl<T> MajorMinor<T> {
     }
 }
 
-// From <https://gist.github.com/rhyolight/2846020>, linked from <https://stackoverflow.com/questions/849211#comment30489239_849211>
+// // From <https://gist.github.com/rhyolight/2846020>, linked from <https://stackoverflow.com/questions/849211#comment30489239_849211>
+// fn dist(line: Line, point: Point) -> f32 {
+//     let Line { start, .. } = line;
+
+//     let Point {
+//         x: point_x,
+//         y: point_y,
+//     } = point;
+
+//     let point_x = point_x as f32;
+//     let point_y = point_y as f32;
+
+//     let delta = line.delta();
+
+//     let slope = delta.y as f32 / delta.x as f32;
+//     let intercept = start.y as f32 - (slope * start.x as f32);
+
+//     f32::abs(slope * point_x - point_y + intercept) / f32::sqrt(slope.powi(2) + 1.0)
+// }
+
+// From <https://stackoverflow.com/a/69606115/383609>
+// Slower, but doesn't give NaNs as above solution does sometimes
 fn dist(line: Line, point: Point) -> f32 {
-    let Line { start, .. } = line;
+    let Line {
+        start: Point { x: x1, y: y1 },
+        end: Point { x: x2, y: y2 },
+    } = line;
 
-    let Point {
-        x: point_x,
-        y: point_y,
-    } = point;
+    let Point { x: px, y: py } = point;
 
-    let point_x = point_x as f32;
-    let point_y = point_y as f32;
+    let x1 = x1 as f32;
+    let y1 = y1 as f32;
+    let x2 = x2 as f32;
+    let y2 = y2 as f32;
+    let px = px as f32;
+    let py = py as f32;
 
     let delta = line.delta();
 
-    let slope = delta.y as f32 / delta.x as f32;
-    let intercept = start.y as f32 - (slope * start.x as f32);
+    let length_sq = delta.length_squared();
+    let length = f32::sqrt(length_sq as f32);
 
-    f32::abs(slope * point_x - point_y + intercept) / f32::sqrt(slope.powi(2) + 1.0)
+    let dx = delta.x as f32 / length;
+    let dy = delta.y as f32 / length;
+
+    let p = dx * (px - x1) + dy * (py - y1);
+
+    if p < 0.0 {
+        let dx = px - x1;
+        let dy = py - y1;
+        return length;
+    } else if p > length {
+        let dx = px - x2;
+        let dy = py - y2;
+        return length;
+    }
+
+    return f32::abs(dy * (px - x1) - dx * (py - y1));
 }
 
 fn perpendicular(
