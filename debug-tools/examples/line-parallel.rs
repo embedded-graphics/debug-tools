@@ -52,149 +52,45 @@ impl<T> MajorMinor<T> {
     }
 }
 
-// From <https://gist.github.com/rhyolight/2846020>, linked from <https://stackoverflow.com/questions/849211#comment30489239_849211>
+// // From <https://gist.github.com/rhyolight/2846020>, linked from <https://stackoverflow.com/questions/849211#comment30489239_849211>
+// fn dist(line: Line, point: Point) -> f32 {
+//     let Line { start, .. } = line;
+
+//     let Point {
+//         x: point_x,
+//         y: point_y,
+//     } = point;
+
+//     let point_x = point_x as f32;
+//     let point_y = point_y as f32;
+
+//     let delta = line.delta();
+
+//     let slope = delta.y as f32 / delta.x as f32;
+//     let intercept = start.y as f32 - (slope * start.x as f32);
+
+//     f32::abs(slope * point_x - point_y + intercept) / f32::sqrt(slope.powi(2) + 1.0)
+// }
+
 fn dist(line: Line, point: Point) -> f32 {
-    let Line { start, .. } = line;
+    let Line {
+        start: Point { x: x1, y: y1 },
+        end: Point { x: x2, y: y2 },
+    } = line;
+    let Point { x: x3, y: y3 } = point;
 
-    let Point {
-        x: point_x,
-        y: point_y,
-    } = point;
+    let delta = line.end - line.start;
 
-    let point_x = point_x as f32;
-    let point_y = point_y as f32;
+    let denom = (delta.x.pow(2) + delta.y.pow(2)) as f32;
 
-    let delta = line.delta();
+    let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) as f32 / denom;
 
-    let slope = delta.y as f32 / delta.x as f32;
-    let intercept = start.y as f32 - (slope * start.x as f32);
+    let x = x1 as f32 + u * (x2 - x1) as f32;
+    let y = y1 as f32 + u * (y2 - y1) as f32;
 
-    f32::abs(slope * point_x - point_y + intercept) / f32::sqrt(slope.powi(2) + 1.0)
-}
+    let dist = f32::sqrt((x - x3 as f32).powi(2) + (y - y3 as f32).powi(2));
 
-fn perpendicular(
-    display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    line: Line,
-    (left_extent, right_extent): (Line, Line),
-    x0: i32,
-    y0: i32,
-    delta: MajorMinor<i32>,
-    step: MajorMinor<Point>,
-    einit: i32,
-    width: i32,
-    winit: i32,
-    extra: bool,
-) -> Result<(), std::convert::Infallible> {
-    let mut point = Point::new(x0, y0);
-
-    if width == 0 {
-        return Ok(());
-    }
-
-    let dx = delta.major;
-    let dy = delta.minor;
-
-    let sign = match (step.major, step.minor) {
-        (Point { x: -1, y: 0 }, Point { x: 0, y: 1 }) => -1,
-        (Point { x: 0, y: -1 }, Point { x: -1, y: 0 }) => -1,
-        (Point { x: 1, y: 0 }, Point { x: 0, y: -1 }) => -1,
-        (Point { x: 0, y: 1 }, Point { x: 1, y: 0 }) => -1,
-        _ => 1,
-    };
-
-    let dx = dx.abs();
-    let dy = dy.abs();
-
-    let threshold = dx - 2 * dy;
-    // E_diag
-    let e_minor = -2 * dx;
-    // E_square
-    let e_major = 2 * dy;
-
-    let mut error = einit * sign;
-
-    let (side_check_left, side_check_right) = (LineSide::Left, LineSide::Right);
-
-    let (_width_l, _width_r) = LineOffset::Center.widths(width);
-
-    let (c_left, c_right) = if extra {
-        (Rgb888::RED, Rgb888::GREEN)
-    } else {
-        (Rgb888::CSS_CORNFLOWER_BLUE, Rgb888::YELLOW)
-    };
-    let c_left = Rgb888::WHITE;
-    let c_right = c_left;
-
-    // Add one to width so we get an extra iteration for the AA edge
-    let wthr = (width + 1).pow(2) * (dx.pow(2) + dy.pow(2));
-    let init_offset = dx + dy - (winit * sign);
-    let mut tk = init_offset;
-    // let mut tk: i32 = 0;
-
-    // dbg!(wthr);
-
-    println!("===");
-
-    // Perpendicular iteration
-    while tk.pow(2) <= wthr {
-        Pixel(point, c_left).draw(display)?;
-
-        if error > threshold {
-            point += step.major;
-            error += e_minor;
-            tk += 2 * dy;
-        }
-
-        error += e_major;
-        point += step.minor;
-        tk += 2 * dx;
-
-        if tk.pow(2) > wthr {
-            let fract = tk.pow(2) as u32 * 255 / (wthr as u32);
-
-            let fract = {
-                // There's this weird division of 1.5 to make the AA look correct. This magic value
-                // is the 8 bit scaler 255 / 1.5. I haven't got to the bottom of why it must be 1.5
-                // yet. Maybe something to do with Bresenham's errors being at most 0.5 away from
-                // pixel centers and everything being multiplied by 2?
-                let two_thirds_255 = 170.0;
-
-                let thickness_ratio = (tk.pow(2) as f32 * two_thirds_255) / (wthr as f32);
-                let thickness_ratio = thickness_ratio % two_thirds_255;
-
-                (255.0 - thickness_ratio * _width_l as f32) as u32
-            };
-
-            let c = Rgb888::new(
-                ((fract * c_left.r() as u32) / 255) as u8,
-                ((fract * c_left.g() as u32) / 255) as u8,
-                ((fract * c_left.b() as u32) / 255) as u8,
-            );
-
-            Pixel(point, c).draw(display)?;
-        }
-    }
-
-    let mut point = Point::new(x0, y0);
-    let mut error = einit * -sign;
-
-    let mut tk = dx + dy + (winit * sign);
-
-    while tk.pow(2) <= wthr {
-        Pixel(point, c_right).draw(display)?;
-
-        if error > threshold {
-            point -= step.major;
-            error += e_minor;
-            tk += 2 * dy;
-        }
-
-        error += e_major;
-        point -= step.minor;
-        tk += 2 * dx;
-    }
-
-    Ok(())
+    dist
 }
 
 fn thickline(
@@ -241,7 +137,7 @@ fn thickline(
         }
     };
 
-    let mut error = 0;
+    let mut error = 0i32;
     let mut point = start;
 
     let dx = delta.major.abs();
@@ -253,29 +149,47 @@ fn thickline(
     let length = dx + 1;
 
     let skele_color = Rgb888::MAGENTA;
-    let mut e = 0.0f32;
     let slope = dy as f32 / dx as f32;
+    let mut e = 0.0f32;
+    println!("===");
+
+    let le = LinearEquation::from_line(&line);
+    let len = f32::sqrt(line.delta().length_squared() as f32);
 
     for _i in 0..length {
+        println!("---");
         Pixel(point, skele_color).draw(display)?;
 
         {
-            let e = e.abs();
+            let aa_point = point - step.minor;
+            let compute = e.abs() as f32;
+
+            let d = dist(line, point);
+
+            dbg!(e, compute, error as f32 / (2.0 * dx as f32));
+
+            // Same as `e`, for positive values at least.
+            let compute = error as f32 / (2.0 * dx as f32);
+
+            // Max distasnce is 1.5px - starting offset is 1px as we did `-step.minor` and the max
+            // error from the Bresenham algo is 0.5.
+            // let d = dist(line, aa_point);
 
             // AA point above line
-            let bright = ((1.0 - e) * 255.0) as u32;
+            let bright = ((1.0 - compute) * 255.0) as u32;
             let c = Rgb888::new(
                 ((bright * skele_color.r() as u32) / 255) as u8,
                 ((bright * skele_color.g() as u32) / 255) as u8,
                 ((bright * skele_color.b() as u32) / 255) as u8,
             );
-            Pixel(point - step.minor, c).draw(display)?;
+            Pixel(aa_point, c).draw(display)?;
         }
 
         if error > threshold {
             e = 0.0;
             point += step.minor;
             error += e_minor;
+            println!("...");
         }
 
         e += slope;
