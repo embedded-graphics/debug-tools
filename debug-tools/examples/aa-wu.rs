@@ -1,12 +1,44 @@
-//! Render a 1px wide antialiased line using error components and a 255 multiplier.
-//!
-//! Inspiration from <https://computergraphics.stackexchange.com/a/10675>
-
 use embedded_graphics::{
-    mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
+    geometry::PointExt,
+    mock_display::MockDisplay,
+    pixelcolor::Rgb888,
+    prelude::*,
+    primitives::{
+        common::{LineSide, LinearEquation},
+        line::StrokeOffset,
+        Line, PrimitiveStyle,
+    },
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
+use integer_sqrt::IntegerSquareRoot;
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum LineOffset {
+    Left,
+    Center,
+    Right,
+}
+
+impl LineOffset {
+    fn widths(self, width: i32) -> (i32, i32) {
+        match width {
+            width => {
+                match self {
+                    Self::Left => (width.saturating_sub(1), 0),
+                    Self::Center => {
+                        let width = width.saturating_sub(1);
+
+                        // Right-side bias for even width lines. Move mod2 to first item in the
+                        // tuple to bias to the left instead.
+                        (width / 2, width / 2 + (width % 2))
+                    }
+                    Self::Right => (width.saturating_sub(1), 0),
+                }
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 struct MajorMinor<T> {
@@ -20,117 +52,142 @@ impl<T> MajorMinor<T> {
     }
 }
 
-fn thick_line(
+fn floor(x: f32) -> f32 {
+    x.floor()
+}
+fn round(x: f32) -> f32 {
+    x.round()
+}
+
+fn fract(x: f32) -> f32 {
+    x.fract()
+}
+
+fn recip_fract(x: f32) -> f32 {
+    1.0 - x.fract()
+}
+
+fn thickline(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    mut line: Line,
-    _width: i32,
+    line: Line,
+    width: i32,
 ) -> Result<(), std::convert::Infallible> {
+    let Line { start, end } = line;
+
+    let extents = line.extents(width as u32, StrokeOffset::None);
+
+    let (delta, step, pstep) = {
+        let delta = end - start;
+
+        let direction = Point::new(
+            if delta.x >= 0 { 1 } else { -1 },
+            if delta.y >= 0 { 1 } else { -1 },
+        );
+
+        let perp_direction = {
+            // let perp_delta = Point::new(delta.y, -delta.x);
+            let perp_delta = line.perpendicular();
+            let perp_delta = perp_delta.end - perp_delta.start;
+
+            Point::new(
+                if perp_delta.x >= 0 { 1 } else { -1 },
+                if perp_delta.y >= 0 { 1 } else { -1 },
+            )
+        };
+
+        // Determine major and minor directions.
+        if delta.y.abs() >= delta.x.abs() {
+            (
+                MajorMinor::new(delta.y, delta.x),
+                MajorMinor::new(direction.y_axis(), direction.x_axis()),
+                MajorMinor::new(perp_direction.y_axis(), perp_direction.x_axis()),
+            )
+        } else {
+            (
+                MajorMinor::new(delta.x, delta.y),
+                MajorMinor::new(direction.x_axis(), direction.y_axis()),
+                MajorMinor::new(perp_direction.x_axis(), perp_direction.y_axis()),
+            )
+        }
+    };
+
+    let mut point = start;
+
+    let dx = delta.major.abs();
+    let dy = delta.minor.abs();
+
+    let threshold = dx - 2 * dy;
+    let e_minor = -2 * dx;
+    let e_major = 2 * dy;
+    let length = dx + 1;
+    let mut error = 0i32;
+
     let skele_color = Rgb888::MAGENTA;
+    let mut slope = dy as f32 / dx as f32;
+    // dbg!(slope);
+    // if slope <= 0.0 {
+    //     dbg!("shet");
+    //     slope = 1.0;
+    // }
+    let mut e = 0.0f32;
+    // println!("===");
 
-    // let Line { start, end } = line;
+    for _i in 0..length {
+        // println!("---");
 
-    let orig_start_y = line.start.y;
+        let bright = ((1.0 - e.fract()) * 255.0) as u32;
 
-    // line.start.y <<= 8;
-    // line.end.y <<= 8;
+        let delta = Point::new(
+            e.floor() as i32 * dx.signum(),
+            e.floor() as i32 * dy.signum(),
+        );
+        let delta = delta.component_mul(step.minor);
 
-    let delta = line.delta();
-
-    let dx = delta.x;
-    let dy = delta.y;
-
-    let slope = dy as f32 / dx as f32;
-
-    let mut point = line.start;
-
-    let mut error: f32 = 0.0;
-
-    for _i in 0..=dx {
-        let c = skele_color;
-
-        // let bright = (1.0 - (error as f32 / e_minor as f32 * 255.0)).abs() as u32;
-
-        let e = error.abs();
-
-        dbg!(e);
-
-        // AA point above line
-        let bright = ((1.0 - e) * 255.0) as u32;
         let c = Rgb888::new(
             ((bright * skele_color.r() as u32) / 255) as u8,
             ((bright * skele_color.g() as u32) / 255) as u8,
             ((bright * skele_color.b() as u32) / 255) as u8,
         );
-        Pixel(Point::new(point.x, point.y - 1), c).draw(display)?;
+        Pixel(point + delta - step.minor, c).draw(display)?;
+        Pixel(point + delta, skele_color).draw(display)?;
 
-        // Line skeleton
-        // let bright = (e * 255.0) as u32;
-        let bright = 255;
-        let c = Rgb888::new(
-            ((bright * skele_color.r() as u32) / 255) as u8,
-            ((bright * skele_color.g() as u32) / 255) as u8,
-            ((bright * skele_color.b() as u32) / 255) as u8,
-        );
-        Pixel(Point::new(point.x, point.y), c).draw(display)?;
-
-        error += slope;
-
-        if error > 1.0 {
-            point.y += 1;
-            error = 0.0;
+        if error > threshold {
+            // point += step.minor;
+            error += e_minor;
+            // println!("...");
         }
 
-        point.x += 1;
+        e += slope;
+        error += e_major;
+        point += step.major;
     }
 
-    // // let Line { start, end } = line;
+    // for x in 0..length {
+    //     {
+    //         let bright = ((1.0 - e.fract()) * 255.0) as u32;
 
-    // let orig_start_y = line.start.y;
+    //         let c = Rgb888::new(
+    //             ((bright * skele_color.r() as u32) / 255) as u8,
+    //             ((bright * skele_color.g() as u32) / 255) as u8,
+    //             ((bright * skele_color.b() as u32) / 255) as u8,
+    //         );
 
-    // // line.start.y <<= 8;
-    // // line.end.y <<= 8;
-
-    // let delta = line.delta();
-
-    // let mut error: i32 = 0;
-    // let mut point = line.start;
-
-    // // let dx = delta.major.abs();
-    // // let dy = delta.minor.abs();
-    // let dx = delta.x;
-    // let dy = delta.y;
-
-    // let threshold = dx - 2 * dy;
-    // let e_minor = -2 * dx;
-    // let e_major = 2 * dy;
-    // let length = dx + 1;
-
-    // let skele_color = Rgb888::MAGENTA;
-
-    // let mut py = 0;
-
-    // for _i in 0..length {
-    //     let c = skele_color;
-
-    //     // let bright = (1.0 - (error as f32 / e_minor as f32 * 255.0)).abs() as u32;
-
-    //     // let c = Rgb888::new(
-    //     //     ((bright * skele_color.r() as u32) / 255) as u8,
-    //     //     ((bright * skele_color.g() as u32) / 255) as u8,
-    //     //     ((bright * skele_color.b() as u32) / 255) as u8,
-    //     // );
-
-    //     Pixel(Point::new(point.x, orig_start_y + (py >> 8)), c).draw(display)?;
-
-    //     println!("{}", (error as f32) / threshold as f32);
-
-    //     if error > threshold {
-    //         py += 1 << 8;
-    //         error += e_minor;
+    //         Pixel(point, c).draw(display)?;
     //     }
 
-    //     error += e_major;
-    //     point.x += 1;
+    //     {
+    //         let bright = ((e.fract()) * 255.0) as u32;
+
+    //         let c = Rgb888::new(
+    //             ((bright * skele_color.r() as u32) / 255) as u8,
+    //             ((bright * skele_color.g() as u32) / 255) as u8,
+    //             ((bright * skele_color.b() as u32) / 255) as u8,
+    //         );
+
+    //         Pixel(point - step.minor, c).draw(display)?;
+    //     }
+
+    //     e += gradient;
     // }
 
     Ok(())
@@ -180,7 +237,7 @@ impl App for LineDebug {
 
         let _mock_display: MockDisplay<Rgb888> = MockDisplay::new();
 
-        thick_line(display, Line::new(self.start, self.end), width)?;
+        thickline(display, Line::new(self.start, self.end), width)?;
 
         // let l = Line::new(self.start, self.end);
 
