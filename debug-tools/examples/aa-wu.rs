@@ -112,6 +112,7 @@ fn thickline(
     };
 
     let mut point = start;
+    let mut p = start;
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -124,18 +125,19 @@ fn thickline(
 
     let skele_color = Rgb888::MAGENTA;
     let mut slope = dy as f32 / dx as f32;
-    // dbg!(slope);
-    // if slope <= 0.0 {
-    //     dbg!("shet");
-    //     slope = 1.0;
-    // }
+
     let mut e = 0.0f32;
-    // println!("===");
+    println!("===");
 
     for _i in 0..length {
-        // println!("---");
+        println!("---");
 
-        let bright = ((1.0 - e.fract()) * 255.0) as u32;
+        let bright = if slope >= 1.0 {
+            // Half brightness pixels along edge when line is at 45º
+            255 / 2
+        } else {
+            ((1.0 - e.fract()) * 255.0) as u32
+        };
 
         let delta = Point::new(
             e.floor() as i32 * dx.signum(),
@@ -143,52 +145,32 @@ fn thickline(
         );
         let delta = delta.component_mul(step.minor);
 
+        // let delta = Point::zero();
+
         let c = Rgb888::new(
             ((bright * skele_color.r() as u32) / 255) as u8,
             ((bright * skele_color.g() as u32) / 255) as u8,
             ((bright * skele_color.b() as u32) / 255) as u8,
         );
-        Pixel(point + delta - step.minor, c).draw(display)?;
-        Pixel(point + delta, skele_color).draw(display)?;
+        Pixel(p + delta - step.minor, c).draw(display)?;
+        Pixel(p + delta, skele_color).draw(display)?;
+
+        // Pixel(point, Rgb888::WHITE).draw(display)?;
+
+        dbg!(e, slope);
 
         if error > threshold {
-            // point += step.minor;
+            // if 1.0 - e.fract() < slope {
+            point += step.minor;
             error += e_minor;
-            // println!("...");
+            println!("...");
         }
 
         e += slope;
         error += e_major;
         point += step.major;
+        p += step.major;
     }
-
-    // for x in 0..length {
-    //     {
-    //         let bright = ((1.0 - e.fract()) * 255.0) as u32;
-
-    //         let c = Rgb888::new(
-    //             ((bright * skele_color.r() as u32) / 255) as u8,
-    //             ((bright * skele_color.g() as u32) / 255) as u8,
-    //             ((bright * skele_color.b() as u32) / 255) as u8,
-    //         );
-
-    //         Pixel(point, c).draw(display)?;
-    //     }
-
-    //     {
-    //         let bright = ((e.fract()) * 255.0) as u32;
-
-    //         let c = Rgb888::new(
-    //             ((bright * skele_color.r() as u32) / 255) as u8,
-    //             ((bright * skele_color.g() as u32) / 255) as u8,
-    //             ((bright * skele_color.b() as u32) / 255) as u8,
-    //         );
-
-    //         Pixel(point - step.minor, c).draw(display)?;
-    //     }
-
-    //     e += gradient;
-    // }
 
     Ok(())
 }
