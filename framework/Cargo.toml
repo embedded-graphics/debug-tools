@@ -8,4 +8,4 @@ publish = false
 [dependencies]
 embedded-graphics = "0.7.0-beta.1"
 embedded-graphics-simulator = { version = "0.3.0", path = "../../simulator" }
-sdl2 = "0.32.2"
+sdl2 = "0.35.1"

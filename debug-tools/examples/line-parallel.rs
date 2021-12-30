@@ -137,7 +137,6 @@ fn thickline(
         }
     };
 
-    let mut error = 0i32;
     let mut point = start;
 
     let dx = delta.major.abs();
@@ -147,14 +146,16 @@ fn thickline(
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let length = dx + 1;
+    let mut error = 0;
 
     let skele_color = Rgb888::MAGENTA;
     let slope = dy as f32 / dx as f32;
     let mut e = 0.0f32;
+    let mut e2 = 0;
     println!("===");
 
-    let le = LinearEquation::from_line(&line);
-    let len = f32::sqrt(line.delta().length_squared() as f32);
+    // let le = LinearEquation::from_line(&line);
+    // let len = f32::sqrt(line.delta().length_squared() as f32);
 
     for _i in 0..length {
         println!("---");
@@ -164,12 +165,12 @@ fn thickline(
             let aa_point = point - step.minor;
             let compute = e.abs() as f32;
 
-            let d = dist(line, point);
+            // let d = dist(line, point);
 
-            dbg!(e, compute, error as f32 / (2.0 * dx as f32));
+            let compute = e2 as f32 / (dx as f32);
 
-            // Same as `e`, for positive values at least.
-            let compute = error as f32 / (2.0 * dx as f32);
+            dbg!(error, e2, compute, e_minor, threshold);
+            // assert!(compute <= 1.0);
 
             // Max distasnce is 1.5px - starting offset is 1px as we did `-step.minor` and the max
             // error from the Bresenham algo is 0.5.
@@ -187,12 +188,14 @@ fn thickline(
 
         if error > threshold {
             e = 0.0;
+            e2 = 0;
             point += step.minor;
             error += e_minor;
             println!("...");
         }
 
         e += slope;
+        e2 += dy;
         error += e_major;
         point += step.major;
     }
