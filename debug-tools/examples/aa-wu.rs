@@ -132,6 +132,8 @@ fn thickline(
     for _i in 0..length {
         println!("---");
 
+        // NOTE: Numerical inaccuracies cause fireflies when using `error as f32 / (2 * dx) as f32`
+        // (although is yields mostly the same result) from Bresenham.
         let bright = if slope >= 1.0 {
             // Half brightness pixels along edge when line is at 45º
             255 / 2
@@ -145,19 +147,19 @@ fn thickline(
         );
         let delta = delta.component_mul(step.minor);
 
-        // let delta = Point::zero();
-
         let c = Rgb888::new(
             ((bright * skele_color.r() as u32) / 255) as u8,
             ((bright * skele_color.g() as u32) / 255) as u8,
             ((bright * skele_color.b() as u32) / 255) as u8,
         );
+
+        // Wu AA pixel
         Pixel(p + delta - step.minor, c).draw(display)?;
+        // Wu normal pixel
         Pixel(p + delta, skele_color).draw(display)?;
 
-        // Pixel(point, Rgb888::WHITE).draw(display)?;
-
-        dbg!(e, slope);
+        // Bresenham pixel
+        Pixel(point - Point::new(0, 4), Rgb888::WHITE).draw(display)?;
 
         if error > threshold {
             // if 1.0 - e.fract() < slope {
@@ -192,7 +194,8 @@ impl App for LineDebug {
             Self::DISPLAY_SIZE.height as i32 / 2,
         );
         Self {
-            start: end + Point::new(10, 15),
+            // start: end + Point::new(10, 15),
+            start: Point::new(95, 99),
             end,
             // end: start + Point::new(100, 0),
             stroke_width: 10,
