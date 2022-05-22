@@ -137,6 +137,19 @@ fn thickline(
         }
     };
 
+    // Direction to travel to hit pixel next to current line
+    let perp_direction = {
+        // let perp_delta = Point::new(delta.y, -delta.x);
+        let perp_delta = line.perpendicular();
+        let perp_delta = perp_delta.end - perp_delta.start;
+
+        if perp_delta.y.abs() > perp_delta.x.abs() {
+            Point::new(0, if perp_delta.y >= 0 { 1 } else { -1 })
+        } else {
+            Point::new(if perp_delta.x >= 0 { 1 } else { -1 }, 0)
+        }
+    };
+
     let mut point = start;
 
     let dx = delta.major.abs();
@@ -148,54 +161,19 @@ fn thickline(
     let length = dx + 1;
     let mut error = 0;
 
-    let skele_color = Rgb888::MAGENTA;
-    let slope = dy as f32 / dx as f32;
-    let mut e = 0.0f32;
-    let mut e2 = 0;
     println!("===");
 
-    // let le = LinearEquation::from_line(&line);
-    // let len = f32::sqrt(line.delta().length_squared() as f32);
+    dbg!(&perp_direction);
 
     for _i in 0..length {
-        println!("---");
-        Pixel(point, skele_color).draw(display)?;
-
-        {
-            let aa_point = point - step.minor;
-            let compute = e.abs() as f32;
-
-            // let d = dist(line, point);
-
-            let compute = e2 as f32 / (dx as f32);
-
-            dbg!(error, e2, compute, e_minor, threshold);
-            // assert!(compute <= 1.0);
-
-            // Max distasnce is 1.5px - starting offset is 1px as we did `-step.minor` and the max
-            // error from the Bresenham algo is 0.5.
-            // let d = dist(line, aa_point);
-
-            // AA point above line
-            let bright = ((1.0 - compute) * 255.0) as u32;
-            let c = Rgb888::new(
-                ((bright * skele_color.r() as u32) / 255) as u8,
-                ((bright * skele_color.g() as u32) / 255) as u8,
-                ((bright * skele_color.b() as u32) / 255) as u8,
-            );
-            Pixel(aa_point, c).draw(display)?;
-        }
+        Pixel(point, Rgb888::MAGENTA).draw(display)?;
+        Pixel(point + perp_direction, Rgb888::CYAN).draw(display)?;
 
         if error > threshold {
-            e = 0.0;
-            e2 = 0;
             point += step.minor;
             error += e_minor;
-            println!("...");
         }
 
-        e += slope;
-        e2 += dy;
         error += e_major;
         point += step.major;
     }
