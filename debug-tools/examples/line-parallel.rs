@@ -159,19 +159,39 @@ fn thickline(
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let length = dx + 1;
+    let aa_base_color = Rgb888::MAGENTA;
     let mut error = 0;
+
+    let slope = dy as f32 / dx as f32;
+    let mut bright = 0.5;
+
+    let swap = false;
 
     println!("===");
 
-    dbg!(&perp_direction);
+    dbg!(line.delta());
 
     for _i in 0..length {
+        let mul = (bright * 255.0) as u32;
+
+        let aa_color = Rgb888::new(
+            ((mul * aa_base_color.r() as u32) / 255) as u8,
+            ((mul * aa_base_color.g() as u32) / 255) as u8,
+            ((mul * aa_base_color.b() as u32) / 255) as u8,
+        );
+
         Pixel(point, Rgb888::MAGENTA).draw(display)?;
-        Pixel(point + perp_direction, Rgb888::CYAN).draw(display)?;
+
+        if !swap {
+            Pixel(point + perp_direction, aa_color).draw(display)?;
+        }
+
+        bright = (bright - slope).max(0.0);
 
         if error > threshold {
             point += step.minor;
             error += e_minor;
+            bright = 1.0;
         }
 
         error += e_major;
