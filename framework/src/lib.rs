@@ -19,7 +19,7 @@ pub mod prelude {
 const MIN_FRAME_DURATION: Duration = Duration::from_millis(1000 / 60);
 
 pub trait App {
-    type Color: PixelColor + From<BinaryColor> + Into<Rgb888>;
+    type Color: PixelColor + From<BinaryColor> + Into<Rgb888> + From<Rgb888>;
     const DISPLAY_SIZE: Size;
 
     fn new() -> Self;

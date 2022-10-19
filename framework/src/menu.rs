@@ -5,8 +5,10 @@ use embedded_graphics::{
     primitives::{Line, PrimitiveStyle, Rectangle},
     text::Text,
 };
-use embedded_graphics_simulator::{SimulatorEvent, Window};
-use sdl2::{keyboard::Keycode, mouse::MouseButton};
+use embedded_graphics_simulator::{
+    sdl2::{Keycode, MouseButton},
+    SimulatorEvent, Window,
+};
 
 use crate::{parameter::Value, Parameter};
 
