@@ -2,7 +2,7 @@
 
 This repository contains tools to help with the development of [`embedded-graphics`].
 While it is primarily targeted at debugging the internals of [`embedded-graphics`] the
-debug framework might also be useful to develop or debugging external libraries.
+debug framework might also be useful to develop or debug external libraries.
 
 ## Minimum supported Rust version
 
