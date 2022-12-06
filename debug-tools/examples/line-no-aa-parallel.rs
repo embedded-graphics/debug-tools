@@ -169,20 +169,21 @@ fn thickline(
     let p_e_minor = -2 * pdx;
     let p_e_major = 2 * pdy;
 
-    println!("===");
+    let flip = if seed_line_step.minor == -parallel_step.major {
+        -1
+    } else {
+        1
+    };
 
     for _i in 0..length {
         Pixel(point, Rgb888::WHITE).draw(display)?;
-
-        dbg!(_i, parallel_error);
 
         parallel_line(
             point,
             line,
             parallel_step,
             parallel_delta,
-            // Negated because the parallel lines are off to the left of the seed line
-            -parallel_error,
+            parallel_error * flip,
             Rgb888::MAGENTA,
             display,
         )?;
@@ -194,15 +195,15 @@ fn thickline(
             if parallel_error > threshold {
                 // Pixel(point, Rgb888::CYAN).draw(display)?;
 
-                // parallel_line(
-                //     point,
-                //     line,
-                //     parallel_step,
-                //     parallel_delta,
-                //     parallel_error + e_minor + e_major,
-                //     Rgb888::CYAN,
-                //     display,
-                // )?;
+                parallel_line(
+                    point,
+                    line,
+                    parallel_step,
+                    parallel_delta,
+                    (parallel_error + p_e_minor + p_e_major) * flip,
+                    Rgb888::CYAN,
+                    display,
+                )?;
 
                 parallel_error += p_e_minor;
             }
@@ -210,9 +211,16 @@ fn thickline(
             parallel_error += p_e_major;
         }
 
-        point += seed_line_step.major;
+        point += seed_line_step.major /* * 3*/;
         seed_line_error += e_major;
     }
+
+    // Pixel(line.start, Rgb888::RED).draw(display)?;
+
+    // seed_line
+    //     .perpendicular()
+    //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::YELLOW, 1))
+    //     .draw(display)?;
 
     Ok(())
 }
