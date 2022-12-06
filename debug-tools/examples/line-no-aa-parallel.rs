@@ -61,107 +61,157 @@ fn thickline(
 
     let extents = line.extents(width as u32, StrokeOffset::None);
 
-    // // The perpendicular starting edge of the line
-    // let seed_line = Line::new(extents.0.start, extents.1.start);
+    // The perpendicular starting edge of the line
+    let seed_line = Line::new(extents.0.start, extents.1.start);
 
-    let (delta, step, pdelta, pstep) = {
-        let delta = end - start;
+    let parallel_delta = line.end - line.start;
+    let parallel_step = Point::new(
+        if parallel_delta.x >= 0 { 1 } else { -1 },
+        if parallel_delta.y >= 0 { 1 } else { -1 },
+    );
 
-        let direction = Point::new(
-            if delta.x >= 0 { 1 } else { -1 },
-            if delta.y >= 0 { 1 } else { -1 },
-        );
+    // let (delta, step, pdelta, pstep) = {
+    //     let delta = end - start;
 
-        let perp_delta = line.perpendicular();
-        let perp_delta = perp_delta.end - perp_delta.start;
+    //     let direction = Point::new(
+    //         if delta.x >= 0 { 1 } else { -1 },
+    //         if delta.y >= 0 { 1 } else { -1 },
+    //     );
 
-        let perp_direction = Point::new(
-            if perp_delta.x >= 0 { 1 } else { -1 },
-            if perp_delta.y >= 0 { 1 } else { -1 },
-        );
+    //     let perp_delta = line.perpendicular();
+    //     let perp_delta = perp_delta.end - perp_delta.start;
 
-        let (perp_delta, perp_direction) = if perp_delta.y.abs() >= perp_delta.x.abs() {
-            (
-                MajorMinor::new(perp_delta.y, perp_delta.x),
-                MajorMinor::new(perp_direction.y_axis(), perp_direction.x_axis()),
-            )
-        } else {
-            (
-                MajorMinor::new(perp_delta.x, perp_delta.y),
-                MajorMinor::new(perp_direction.x_axis(), perp_direction.y_axis()),
-            )
-        };
+    //     let perp_direction = Point::new(
+    //         if perp_delta.x >= 0 { 1 } else { -1 },
+    //         if perp_delta.y >= 0 { 1 } else { -1 },
+    //     );
 
-        // Determine major and minor directions.
-        if delta.y.abs() >= delta.x.abs() {
-            (
-                MajorMinor::new(delta.y, delta.x),
-                MajorMinor::new(direction.y_axis(), direction.x_axis()),
-                perp_delta,
-                perp_direction,
-            )
-        } else {
-            (
-                MajorMinor::new(delta.x, delta.y),
-                MajorMinor::new(direction.x_axis(), direction.y_axis()),
-                perp_delta,
-                perp_direction,
-            )
-        }
-    };
+    //     let (perp_delta, perp_direction) = if perp_delta.y.abs() >= perp_delta.x.abs() {
+    //         (
+    //             MajorMinor::new(perp_delta.y, perp_delta.x),
+    //             MajorMinor::new(perp_direction.y_axis(), perp_direction.x_axis()),
+    //         )
+    //     } else {
+    //         (
+    //             MajorMinor::new(perp_delta.x, perp_delta.y),
+    //             MajorMinor::new(perp_direction.x_axis(), perp_direction.y_axis()),
+    //         )
+    //     };
 
-    let mut point = start;
+    //     // Determine major and minor directions.
+    //     if delta.y.abs() >= delta.x.abs() {
+    //         (
+    //             MajorMinor::new(delta.y, delta.x),
+    //             MajorMinor::new(direction.y_axis(), direction.x_axis()),
+    //             perp_delta,
+    //             perp_direction,
+    //         )
+    //     } else {
+    //         (
+    //             MajorMinor::new(delta.x, delta.y),
+    //             MajorMinor::new(direction.x_axis(), direction.y_axis()),
+    //             perp_delta,
+    //             perp_direction,
+    //         )
+    //     }
+    // };
+
+    let mut point = seed_line.start;
 
     // Base line skeleton
-    parallel_line(point, line, step, delta, 0, Rgb888::MAGENTA, display)?;
+    // parallel_line(point, line, step, delta, 0, Rgb888::MAGENTA, display)?;
 
-    let dx = pdelta.major.abs();
-    let dy = pdelta.minor.abs();
+    let seed_line_delta = seed_line.end - seed_line.start;
+
+    let seed_line_direction = Point::new(
+        if seed_line_delta.x >= 0 { 1 } else { -1 },
+        if seed_line_delta.y >= 0 { 1 } else { -1 },
+    );
+
+    let (seed_line_delta, seed_line_step) = if seed_line_delta.y.abs() >= seed_line_delta.x.abs() {
+        (
+            MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
+            MajorMinor::new(seed_line_direction.y_axis(), seed_line_direction.x_axis()),
+        )
+    } else {
+        (
+            MajorMinor::new(seed_line_delta.x, seed_line_delta.y),
+            MajorMinor::new(seed_line_direction.x_axis(), seed_line_direction.y_axis()),
+        )
+    };
+
+    let (parallel_delta, parallel_step) = if parallel_delta.y.abs() >= parallel_delta.x.abs() {
+        (
+            MajorMinor::new(parallel_delta.y, parallel_delta.x),
+            MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis()),
+        )
+    } else {
+        (
+            MajorMinor::new(parallel_delta.x, parallel_delta.y),
+            MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis()),
+        )
+    };
+
+    let dx = seed_line_delta.major.abs();
+    let dy = seed_line_delta.minor.abs();
+
+    let pdx = parallel_delta.major.abs();
+    let pdy = parallel_delta.minor.abs();
 
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let length = dx + 1;
-    let mut error = 0;
+    let mut seed_line_error = 0;
     // Perpendicular error or "phase"
-    let mut perp_error = 0;
+    let mut parallel_error = 0;
 
-    for _i in 0..width {
+    let p_e_minor = -2 * pdx;
+    let p_e_major = 2 * pdy;
+
+    println!("===");
+
+    for _i in 0..length {
         Pixel(point, Rgb888::WHITE).draw(display)?;
+
+        dbg!(_i, parallel_error);
 
         parallel_line(
             point,
             line,
-            step,
-            delta,
-            perp_error,
+            parallel_step,
+            parallel_delta,
+            // Negated because the parallel lines are off to the left of the seed line
+            -parallel_error,
             Rgb888::MAGENTA,
             display,
         )?;
 
-        if error > threshold {
-            point += pstep.minor;
-            error += e_minor;
+        if seed_line_error > threshold {
+            point += seed_line_step.minor;
+            seed_line_error += e_minor;
 
-            if perp_error > threshold {
-                parallel_line(
-                    point,
-                    line,
-                    step,
-                    delta,
-                    perp_error + e_minor + e_major,
-                    Rgb888::CYAN,
-                    display,
-                )?;
+            if parallel_error > threshold {
+                // Pixel(point, Rgb888::CYAN).draw(display)?;
 
-                perp_error += e_minor;
+                // parallel_line(
+                //     point,
+                //     line,
+                //     parallel_step,
+                //     parallel_delta,
+                //     parallel_error + e_minor + e_major,
+                //     Rgb888::CYAN,
+                //     display,
+                // )?;
+
+                parallel_error += p_e_minor;
             }
 
-            perp_error += e_major;
+            parallel_error += p_e_major;
         }
 
-        error += e_major;
-        point += pstep.major;
+        point += seed_line_step.major;
+        seed_line_error += e_major;
     }
 
     Ok(())
