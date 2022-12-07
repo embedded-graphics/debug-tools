@@ -169,9 +169,9 @@ fn thickline(
     // Perpendicular error or "phase"
     let mut parallel_error = 0;
 
-    let p_threshold = pdx - 2 * pdy;
-    let p_e_minor = -2 * pdx;
-    let p_e_major = 2 * pdy;
+    // let p_threshold = pdx - 2 * pdy;
+    // let p_e_minor = -2 * pdx;
+    // let p_e_major = 2 * pdy;
 
     let flip = if seed_line_step.minor == -parallel_step.major {
         -1
@@ -179,8 +179,10 @@ fn thickline(
         1
     };
 
-    // TODO: Proper thickness calculation
-    for i in 0..width {
+    let thickness_threshold = (width * 2).pow(2) * line.delta().length_squared();
+    let mut thickness_accumulator = 0i32;
+
+    while thickness_accumulator.pow(2) <= thickness_threshold {
         // Pixel(point, Rgb888::WHITE).draw(display)?;
 
         parallel_line(
@@ -196,8 +198,9 @@ fn thickline(
         if seed_line_error > threshold {
             point += seed_line_step.minor;
             seed_line_error += e_minor;
+            thickness_accumulator += 2 * dy;
 
-            if parallel_error > p_threshold {
+            if parallel_error > threshold {
                 let p = if flip == 1 {
                     point
                 } else {
@@ -214,20 +217,21 @@ fn thickline(
                         line,
                         parallel_step,
                         parallel_delta,
-                        (parallel_error + p_e_minor + p_e_major) * flip,
+                        (parallel_error + e_minor + e_major) * flip,
                         Rgb888::CYAN,
                         display,
                     )?;
                 }
 
-                parallel_error += p_e_minor;
+                parallel_error += e_minor;
             }
 
-            parallel_error += p_e_major;
+            parallel_error += e_major;
         }
 
         point += seed_line_step.major/* * 3*/;
         seed_line_error += e_major;
+        thickness_accumulator += 2 * dx;
     }
 
     // Pixel(line.start, Rgb888::RED).draw(display)?;
