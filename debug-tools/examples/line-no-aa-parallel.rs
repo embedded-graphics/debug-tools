@@ -61,11 +61,11 @@ fn thickline(
 ) -> Result<(), std::convert::Infallible> {
     let Line { start, end } = line;
 
-    // let extents = line.extents(width as u32, StrokeOffset::None);
-    // // The perpendicular starting edge of the line
-    // let seed_line = Line::new(extents.0.start, extents.1.start);
+    let extents = line.extents(width as u32, StrokeOffset::None);
+    // The perpendicular starting edge of the line
+    let extents_line = Line::new(extents.0.start, extents.1.start);
 
-    let seed_line = line.perpendicular();
+    let seed_line = line.right_perpendicular();
 
     let parallel_delta = line.end - line.start;
     let parallel_step = Point::new(
@@ -119,7 +119,7 @@ fn thickline(
     //     }
     // };
 
-    let mut point = seed_line.start;
+    let mut point = extents_line.start;
 
     // Base line skeleton
     // parallel_line(point, line, step, delta, 0, Rgb888::MAGENTA, display)?;
