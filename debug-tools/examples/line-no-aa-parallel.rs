@@ -56,11 +56,12 @@ fn thickline(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
     line: Line,
     width: i32,
+    toggle: bool,
+    toggle2: bool,
 ) -> Result<(), std::convert::Infallible> {
     let Line { start, end } = line;
 
     let extents = line.extents(width as u32, StrokeOffset::None);
-
     // The perpendicular starting edge of the line
     let seed_line = Line::new(extents.0.start, extents.1.start);
 
@@ -166,6 +167,7 @@ fn thickline(
     // Perpendicular error or "phase"
     let mut parallel_error = 0;
 
+    let p_threshold = pdx - 2 * pdy;
     let p_e_minor = -2 * pdx;
     let p_e_major = 2 * pdy;
 
@@ -176,7 +178,7 @@ fn thickline(
     };
 
     for _i in 0..length {
-        Pixel(point, Rgb888::WHITE).draw(display)?;
+        // Pixel(point, Rgb888::WHITE).draw(display)?;
 
         parallel_line(
             point,
@@ -192,18 +194,28 @@ fn thickline(
             point += seed_line_step.minor;
             seed_line_error += e_minor;
 
-            if parallel_error > threshold {
-                // Pixel(point, Rgb888::CYAN).draw(display)?;
+            if parallel_error > p_threshold {
+                let p = if flip == 1 {
+                    point
+                } else {
+                    // Put point on other side of the line
+                    // FIXME: This is such a hack...
+                    point - seed_line_step.minor + seed_line_step.major
+                };
 
-                parallel_line(
-                    point,
-                    line,
-                    parallel_step,
-                    parallel_delta,
-                    (parallel_error + p_e_minor + p_e_major) * flip,
-                    Rgb888::CYAN,
-                    display,
-                )?;
+                if toggle {
+                    Pixel(p, Rgb888::CYAN).draw(display)?;
+
+                    parallel_line(
+                        point,
+                        line,
+                        parallel_step,
+                        parallel_delta,
+                        (parallel_error + p_e_minor + p_e_major) * flip,
+                        Rgb888::CYAN,
+                        display,
+                    )?;
+                }
 
                 parallel_error += p_e_minor;
             }
@@ -211,15 +223,14 @@ fn thickline(
             parallel_error += p_e_major;
         }
 
-        point += seed_line_step.major /* * 3*/;
+        point += seed_line_step.major/* * 3*/;
         seed_line_error += e_major;
     }
 
     // Pixel(line.start, Rgb888::RED).draw(display)?;
 
     // seed_line
-    //     .perpendicular()
-    //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::YELLOW, 1))
+    //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, 1))
     //     .draw(display)?;
 
     Ok(())
@@ -264,6 +275,8 @@ struct LineDebug {
     start: Point,
     end: Point,
     stroke_width: u32,
+    toggle: bool,
+    toggle2: bool,
 }
 
 impl App for LineDebug {
@@ -281,6 +294,8 @@ impl App for LineDebug {
             end,
             // end: start + Point::new(100, 0),
             stroke_width: 10,
+            toggle: true,
+            toggle2: false,
         }
     }
 
@@ -289,6 +304,8 @@ impl App for LineDebug {
             Parameter::new("start", &mut self.start),
             Parameter::new("end", &mut self.end),
             Parameter::new("stroke", &mut self.stroke_width),
+            Parameter::new("toggle", &mut self.toggle),
+            Parameter::new("toggle 2", &mut self.toggle2),
         ]
     }
 
@@ -304,7 +321,13 @@ impl App for LineDebug {
 
         let _mock_display: MockDisplay<Rgb888> = MockDisplay::new();
 
-        thickline(display, Line::new(self.start, self.end), width)?;
+        thickline(
+            display,
+            Line::new(self.start, self.end),
+            width,
+            self.toggle,
+            self.toggle2,
+        )?;
 
         // let l = Line::new(self.start, self.end);
 
