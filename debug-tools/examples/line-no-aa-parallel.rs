@@ -236,9 +236,9 @@ fn thickline(
 
     // Pixel(line.start, Rgb888::RED).draw(display)?;
 
-    // seed_line
-    //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, 1))
-    //     .draw(display)?;
+    line.translate(Point::new(0, 20))
+        .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
+        .draw(display)?;
 
     Ok(())
 }
