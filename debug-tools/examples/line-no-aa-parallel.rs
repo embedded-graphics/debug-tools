@@ -65,10 +65,6 @@ fn thickline(
 
     let Line { start, end } = line;
 
-    // let extents = line.extents(width as u32, StrokeOffset::None);
-    // // The perpendicular starting edge of the line
-    // let extents_line = Line::new(extents.0.start, extents.1.start);
-
     let seed_line = line.perpendicular();
 
     let parallel_delta = line.end - line.start;
@@ -77,53 +73,6 @@ fn thickline(
         if parallel_delta.y >= 0 { 1 } else { -1 },
     );
 
-    // let (delta, step, pdelta, pstep) = {
-    //     let delta = end - start;
-
-    //     let direction = Point::new(
-    //         if delta.x >= 0 { 1 } else { -1 },
-    //         if delta.y >= 0 { 1 } else { -1 },
-    //     );
-
-    //     let perp_delta = line.perpendicular();
-    //     let perp_delta = perp_delta.end - perp_delta.start;
-
-    //     let perp_direction = Point::new(
-    //         if perp_delta.x >= 0 { 1 } else { -1 },
-    //         if perp_delta.y >= 0 { 1 } else { -1 },
-    //     );
-
-    //     let (perp_delta, perp_direction) = if perp_delta.y.abs() >= perp_delta.x.abs() {
-    //         (
-    //             MajorMinor::new(perp_delta.y, perp_delta.x),
-    //             MajorMinor::new(perp_direction.y_axis(), perp_direction.x_axis()),
-    //         )
-    //     } else {
-    //         (
-    //             MajorMinor::new(perp_delta.x, perp_delta.y),
-    //             MajorMinor::new(perp_direction.x_axis(), perp_direction.y_axis()),
-    //         )
-    //     };
-
-    //     // Determine major and minor directions.
-    //     if delta.y.abs() >= delta.x.abs() {
-    //         (
-    //             MajorMinor::new(delta.y, delta.x),
-    //             MajorMinor::new(direction.y_axis(), direction.x_axis()),
-    //             perp_delta,
-    //             perp_direction,
-    //         )
-    //     } else {
-    //         (
-    //             MajorMinor::new(delta.x, delta.y),
-    //             MajorMinor::new(direction.x_axis(), direction.y_axis()),
-    //             perp_delta,
-    //             perp_direction,
-    //         )
-    //     }
-    // };
-
-    // TODO: Skip drawing first part of line twice. Need to offset the thickness accumulator too.
     let mut point_left = line.start;
     let mut point_right = line.start;
 
@@ -167,7 +116,6 @@ fn thickline(
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    let length = dx + 1;
     let mut seed_line_error = 0;
     let mut seed_line_error_right = e_major;
     // Perpendicular error or "phase"
@@ -185,7 +133,7 @@ fn thickline(
 
     // Bias to one side of the line
     // TODO: The current extents() function needs to respect this too, as well as stroke offset
-    let mut is_right = false;
+    let mut is_right = true;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         let (mut point, inc, c, seed_line_error, parallel_error, idk) = if is_right {
@@ -208,7 +156,7 @@ fn thickline(
             )
         };
 
-        is_right = !is_right;
+        // is_right = !is_right;
 
         parallel_line(
             *point,
@@ -247,8 +195,10 @@ fn thickline(
                             parallel_delta,
                             e,
                             Rgb888::CYAN,
-                            !is_right,
-                            -1,
+                            false,
+                            0,
+                            // !is_right,
+                            // -1,
                             display,
                         )?;
                     }
