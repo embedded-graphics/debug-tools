@@ -57,7 +57,7 @@ fn thickline(
     line: Line,
     width: i32,
     toggle: bool,
-    toggle2: bool,
+    last_offset: i32,
 ) -> Result<(), std::convert::Infallible> {
     if width == 0 {
         return Ok(());
@@ -135,6 +135,8 @@ fn thickline(
     // TODO: The current extents() function needs to respect this too, as well as stroke offset
     let mut is_right = true;
 
+    dbg!(flip);
+
     while thickness_accumulator.pow(2) <= thickness_threshold {
         let (mut point, inc, c, seed_line_error, parallel_error, idk) = if is_right {
             (
@@ -155,8 +157,6 @@ fn thickline(
                 flip,
             )
         };
-
-        // is_right = !is_right;
 
         parallel_line(
             *point,
@@ -183,7 +183,7 @@ fn thickline(
                             (*point, (*parallel_error + e_major + e_minor) * idk)
                         } else {
                             // Put point on other side of the line
-                            (*point + inc.major - inc.minor, *parallel_error * idk)
+                            (*point, (*parallel_error + e_major + e_minor) * idk)
                         };
 
                         // Pixel(p, Rgb888::CYAN).draw(display)?;
@@ -195,8 +195,15 @@ fn thickline(
                             parallel_delta,
                             e,
                             Rgb888::CYAN,
-                            false,
-                            0,
+                            // For the side where the Bresenham params step "away" from the line
+                            // body, skip the first pixel to prevent jaggies on the starting edge.
+                            !is_right && flip != 1,
+                            // last_offset,
+                            if is_right && flip == -1 || !is_right && flip == 1 {
+                                -1
+                            } else {
+                                0
+                            },
                             // !is_right,
                             // -1,
                             display,
@@ -213,11 +220,13 @@ fn thickline(
         *point += inc.major/* * 3*/;
         *seed_line_error += e_major;
         thickness_accumulator += 2 * dx;
+
+        is_right = !is_right;
     }
 
     // Pixel(line.start, Rgb888::RED).draw(display)?;
 
-    line.translate(Point::new(0, width + 5))
+    line.translate(Point::new(0, width * 2 + 5))
         .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
         .draw(display)?;
 
@@ -232,7 +241,7 @@ fn parallel_line(
     start_error: i32,
     c: Rgb888,
     skip_first: bool,
-    last_offset: i32,
+    mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
@@ -247,13 +256,17 @@ fn parallel_line(
     let mut error = start_error;
 
     if skip_first {
-        error += e_major;
-        point += step.major;
+        // Some of the length was consumed by this initial skip iteration. If this is omitted, the
+        // line will be drawn 1px too long.
+        last_offset -= 1;
 
         if error > threshold {
             point += step.minor;
             error += e_minor;
         }
+
+        error += e_major;
+        point += step.major;
     }
 
     for _i in 0..(length + last_offset) {
@@ -276,7 +289,7 @@ struct LineDebug {
     end: Point,
     stroke_width: u32,
     toggle: bool,
-    toggle2: bool,
+    last_offset: i32,
 }
 
 impl App for LineDebug {
@@ -295,7 +308,7 @@ impl App for LineDebug {
             // end: start + Point::new(100, 0),
             stroke_width: 10,
             toggle: true,
-            toggle2: false,
+            last_offset: 0,
         }
     }
 
@@ -305,7 +318,7 @@ impl App for LineDebug {
             Parameter::new("end", &mut self.end),
             Parameter::new("stroke", &mut self.stroke_width),
             Parameter::new("toggle", &mut self.toggle),
-            Parameter::new("toggle 2", &mut self.toggle2),
+            Parameter::new("last offset", &mut self.last_offset),
         ]
     }
 
@@ -326,7 +339,7 @@ impl App for LineDebug {
             Line::new(self.start, self.end),
             width,
             self.toggle,
-            self.toggle2,
+            self.last_offset,
         )?;
 
         // let l = Line::new(self.start, self.end);
