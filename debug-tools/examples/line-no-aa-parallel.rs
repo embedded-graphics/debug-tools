@@ -59,13 +59,17 @@ fn thickline(
     toggle: bool,
     toggle2: bool,
 ) -> Result<(), std::convert::Infallible> {
+    if width == 0 {
+        return Ok(());
+    }
+
     let Line { start, end } = line;
 
-    let extents = line.extents(width as u32, StrokeOffset::None);
-    // The perpendicular starting edge of the line
-    let extents_line = Line::new(extents.0.start, extents.1.start);
+    // let extents = line.extents(width as u32, StrokeOffset::None);
+    // // The perpendicular starting edge of the line
+    // let extents_line = Line::new(extents.0.start, extents.1.start);
 
-    let seed_line = line.right_perpendicular();
+    let seed_line = line.perpendicular();
 
     let parallel_delta = line.end - line.start;
     let parallel_step = Point::new(
@@ -119,10 +123,9 @@ fn thickline(
     //     }
     // };
 
-    let mut point = extents_line.start;
-
-    // Base line skeleton
-    // parallel_line(point, line, step, delta, 0, Rgb888::MAGENTA, display)?;
+    // TODO: Skip drawing first part of line twice. Need to offset the thickness accumulator too.
+    let mut point1 = line.start;
+    let mut point2 = line.start;
 
     let seed_line_delta = seed_line.end - seed_line.start;
 
@@ -155,23 +158,21 @@ fn thickline(
         )
     };
 
+    // Don't draw line skeleton twice
+    point2 -= seed_line_step.major;
+
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
-
-    let pdx = parallel_delta.major.abs();
-    let pdy = parallel_delta.minor.abs();
 
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let length = dx + 1;
     let mut seed_line_error = 0;
+    let mut seed_line_error2 = e_major;
     // Perpendicular error or "phase"
     let mut parallel_error = 0;
-
-    // let p_threshold = pdx - 2 * pdy;
-    // let p_e_minor = -2 * pdx;
-    // let p_e_major = 2 * pdy;
+    let mut parallel_error2 = 0;
 
     let flip = if seed_line_step.minor == -parallel_step.major {
         -1
@@ -180,63 +181,94 @@ fn thickline(
     };
 
     let thickness_threshold = (width * 2).pow(2) * line.delta().length_squared();
-    let mut thickness_accumulator = 0i32;
+    let mut thickness_accumulator = 2 * dx;
+
+    // Bias to one side of the line
+    // TODO: Which side actually is this lol
+    // TODO: The current extents() function needs to respect this too, as well as stroke offset
+    let mut is_left = false;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        // Pixel(point, Rgb888::WHITE).draw(display)?;
+        let (mut point, inc, c, seed_line_error, parallel_error, idk) = if is_left {
+            (
+                &mut point2,
+                MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
+                Rgb888::YELLOW,
+                &mut seed_line_error2,
+                &mut parallel_error2,
+                -flip,
+            )
+        } else {
+            (
+                &mut point1,
+                seed_line_step,
+                Rgb888::MAGENTA,
+                &mut seed_line_error,
+                &mut parallel_error,
+                flip,
+            )
+        };
+
+        is_left = !is_left;
 
         parallel_line(
-            point,
+            *point,
             line,
             parallel_step,
             parallel_delta,
-            parallel_error * flip,
-            Rgb888::MAGENTA,
+            *parallel_error * idk,
+            c,
+            false,
+            0,
             display,
         )?;
 
-        if seed_line_error > threshold {
-            point += seed_line_step.minor;
-            seed_line_error += e_minor;
+        if *seed_line_error > threshold {
+            *point += inc.minor;
+            *seed_line_error += e_minor;
             thickness_accumulator += 2 * dy;
 
-            if parallel_error > threshold {
-                let p = if flip == 1 {
-                    point
-                } else {
-                    // Put point on other side of the line
-                    // FIXME: This is such a hack...
-                    point - seed_line_step.minor + seed_line_step.major
-                };
-
+            if *parallel_error > threshold {
                 if toggle {
-                    Pixel(p, Rgb888::CYAN).draw(display)?;
+                    if thickness_accumulator.pow(2) <= thickness_threshold {
+                        // FIXME: This entire thing is such a hack...
+                        let (p, e) = if flip == 1 {
+                            (*point, (*parallel_error + e_major + e_minor) * idk)
+                        } else {
+                            // Put point on other side of the line
+                            (*point + inc.major - inc.minor, *parallel_error * idk)
+                        };
 
-                    parallel_line(
-                        point,
-                        line,
-                        parallel_step,
-                        parallel_delta,
-                        (parallel_error + e_minor + e_major) * flip,
-                        Rgb888::CYAN,
-                        display,
-                    )?;
+                        // Pixel(p, Rgb888::CYAN).draw(display)?;
+
+                        parallel_line(
+                            p,
+                            line,
+                            parallel_step,
+                            parallel_delta,
+                            e,
+                            Rgb888::CYAN,
+                            !is_left,
+                            -1,
+                            display,
+                        )?;
+                    }
                 }
 
-                parallel_error += e_minor;
+                *parallel_error += e_minor;
             }
 
-            parallel_error += e_major;
+            *parallel_error += e_major;
         }
 
-        point += seed_line_step.major/* * 3*/;
-        seed_line_error += e_major;
+        *point += inc.major/* * 3*/;
+        *seed_line_error += e_major;
         thickness_accumulator += 2 * dx;
     }
 
     // Pixel(line.start, Rgb888::RED).draw(display)?;
 
-    line.translate(Point::new(0, 20))
+    line.translate(Point::new(0, width + 5))
         .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
         .draw(display)?;
 
@@ -250,6 +282,8 @@ fn parallel_line(
     delta: MajorMinor<i32>,
     start_error: i32,
     c: Rgb888,
+    skip_first: bool,
+    last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
@@ -260,10 +294,20 @@ fn parallel_line(
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    let length = dx + 1;
+    let mut length = dx + 1;
     let mut error = start_error;
 
-    for _i in 0..length {
+    if skip_first {
+        error += e_major;
+        point += step.major;
+
+        if error > threshold {
+            point += step.minor;
+            error += e_minor;
+        }
+    }
+
+    for _i in 0..(length + last_offset) {
         Pixel(point, c).draw(display)?;
 
         if error > threshold {
