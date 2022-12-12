@@ -124,8 +124,8 @@ fn thickline(
     // };
 
     // TODO: Skip drawing first part of line twice. Need to offset the thickness accumulator too.
-    let mut point1 = line.start;
-    let mut point2 = line.start;
+    let mut point_left = line.start;
+    let mut point_right = line.start;
 
     let seed_line_delta = seed_line.end - seed_line.start;
 
@@ -159,7 +159,7 @@ fn thickline(
     };
 
     // Don't draw line skeleton twice
-    point2 -= seed_line_step.major;
+    point_right -= seed_line_step.major;
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -169,10 +169,10 @@ fn thickline(
     let e_major = 2 * dy;
     let length = dx + 1;
     let mut seed_line_error = 0;
-    let mut seed_line_error2 = e_major;
+    let mut seed_line_error_right = e_major;
     // Perpendicular error or "phase"
     let mut parallel_error = 0;
-    let mut parallel_error2 = 0;
+    let mut parallel_error_right = 0;
 
     let flip = if seed_line_step.minor == -parallel_step.major {
         -1
@@ -184,23 +184,22 @@ fn thickline(
     let mut thickness_accumulator = 2 * dx;
 
     // Bias to one side of the line
-    // TODO: Which side actually is this lol
     // TODO: The current extents() function needs to respect this too, as well as stroke offset
-    let mut is_left = false;
+    let mut is_right = false;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        let (mut point, inc, c, seed_line_error, parallel_error, idk) = if is_left {
+        let (mut point, inc, c, seed_line_error, parallel_error, idk) = if is_right {
             (
-                &mut point2,
+                &mut point_right,
                 MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
                 Rgb888::YELLOW,
-                &mut seed_line_error2,
-                &mut parallel_error2,
+                &mut seed_line_error_right,
+                &mut parallel_error_right,
                 -flip,
             )
         } else {
             (
-                &mut point1,
+                &mut point_left,
                 seed_line_step,
                 Rgb888::MAGENTA,
                 &mut seed_line_error,
@@ -209,7 +208,7 @@ fn thickline(
             )
         };
 
-        is_left = !is_left;
+        is_right = !is_right;
 
         parallel_line(
             *point,
@@ -248,7 +247,7 @@ fn thickline(
                             parallel_delta,
                             e,
                             Rgb888::CYAN,
-                            !is_left,
+                            !is_right,
                             -1,
                             display,
                         )?;
