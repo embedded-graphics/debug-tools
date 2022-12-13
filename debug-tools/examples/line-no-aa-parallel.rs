@@ -129,13 +129,13 @@ fn thickline(
     };
 
     let thickness_threshold = (width * 2).pow(2) * line.delta().length_squared();
+    // Add the first line drawn to the thickness. If this is left at zero, an extra line will be
+    // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * dx;
 
     // Bias to one side of the line
     // TODO: The current extents() function needs to respect this too, as well as stroke offset
     let mut is_right = true;
-
-    dbg!(flip);
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         let (mut point, inc, c, seed_line_error, parallel_error, idk) = if is_right {
@@ -178,27 +178,20 @@ fn thickline(
             if *parallel_error > threshold {
                 if toggle {
                     if thickness_accumulator.pow(2) <= thickness_threshold {
-                        // FIXME: This entire thing is such a hack...
-                        let (p, e) = if flip == 1 {
-                            (*point, (*parallel_error + e_major + e_minor) * idk)
-                        } else {
-                            // Put point on other side of the line
-                            (*point, (*parallel_error + e_major + e_minor) * idk)
-                        };
-
                         // Pixel(p, Rgb888::CYAN).draw(display)?;
 
                         parallel_line(
-                            p,
+                            *point,
                             line,
                             parallel_step,
                             parallel_delta,
-                            e,
+                            // TODO: Why do I need idk here?
+                            (*parallel_error + e_major + e_minor) * idk,
                             Rgb888::CYAN,
                             // For the side where the Bresenham params step "away" from the line
                             // body, skip the first pixel to prevent jaggies on the starting edge.
                             !is_right && flip != 1,
-                            // last_offset,
+                            // TODO: Explain or at least understand the haxx here
                             if is_right && flip == -1 || !is_right && flip == 1 {
                                 -1
                             } else {
