@@ -138,7 +138,7 @@ fn thickline(
     let mut is_right = true;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        let (mut point, inc, c, seed_line_error, parallel_error, idk) = if is_right {
+        let (mut point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
             (
                 &mut point_right,
                 MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
@@ -163,7 +163,7 @@ fn thickline(
             line,
             parallel_step,
             parallel_delta,
-            *parallel_error * idk,
+            *parallel_error * flip,
             c,
             false,
             0,
@@ -186,17 +186,13 @@ fn thickline(
                             parallel_step,
                             parallel_delta,
                             // TODO: Why do I need idk here?
-                            (*parallel_error + e_major + e_minor) * idk,
+                            (*parallel_error + e_major + e_minor) * flip,
                             Rgb888::CYAN,
                             // For the side where the Bresenham params step "away" from the line
                             // body, skip the first pixel to prevent jaggies on the starting edge.
                             !is_right && flip != 1,
                             // TODO: Explain or at least understand the haxx here
-                            if is_right && flip == -1 || !is_right && flip == 1 {
-                                -1
-                            } else {
-                                0
-                            },
+                            if flip == 1 { -1 } else { 0 },
                             // !is_right,
                             // -1,
                             display,
