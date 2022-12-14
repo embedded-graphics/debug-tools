@@ -5,13 +5,11 @@ use embedded_graphics::{
     prelude::*,
     primitives::{
         common::{LineSide, LinearEquation},
-        line::StrokeOffset,
-        Line, PrimitiveStyle,
+        Line,
     },
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
-use integer_sqrt::IntegerSquareRoot;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum LineOffset {
@@ -124,7 +122,7 @@ fn thickline(
 
     // This fixes the phasing for parallel lines on the left side of the base line for the octants
     // where the line perpendicular moves "away" from the line body.
-    let flip = if seed_line_step.minor == -parallel_step.major {
+    let original_flip = if seed_line_step.minor == -parallel_step.major {
         -1
     } else {
         1
@@ -148,7 +146,7 @@ fn thickline(
                 &mut seed_line_error_right,
                 &mut parallel_error_right,
                 // Fix phasing for parallel lines on the right hand side of the base line
-                -flip,
+                -original_flip,
             )
         } else {
             (
@@ -157,7 +155,7 @@ fn thickline(
                 Rgb888::CSS_SALMON,
                 &mut seed_line_error,
                 &mut parallel_error,
-                flip,
+                original_flip,
             )
         };
 
@@ -192,13 +190,19 @@ fn thickline(
                             parallel_delta,
                             (*parallel_error + e_minor + e_major) * flip,
                             Rgb888::CYAN,
-                            // For the side where the Bresenham params step "away" from the line
-                            // body, skip the first pixel to prevent jaggies on the starting edge.
-                            // !is_right && flip != 1,
-                            // TODO: Explain or at least understand the haxx here
-                            // if flip == 1 { -1 } else { 0 },
-                            false,
-                            0,
+                            // If we're on the side of the base line where the perpendicular
+                            // Bresenham steps "into" the thick line body, skip the first extra
+                            // line point as it's on the wrong side of the perpendicular and leads
+                            // to a jagged edge.
+                            original_flip == -1 && !is_right || original_flip == 1 && is_right,
+                            if original_flip == -1 && !is_right || original_flip == 1 && is_right {
+                                0
+                            } else {
+                                // Because the opposite side's extra lines start one step into the thick
+                                // line body, we must reduce its total length by 1 to prevent jagged
+                                // edges on the end edge of the line.
+                                -1
+                            },
                             display,
                         )?;
                     }
