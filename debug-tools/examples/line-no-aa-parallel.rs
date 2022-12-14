@@ -122,6 +122,8 @@ fn thickline(
     let mut parallel_error = 0;
     let mut parallel_error_right = 0;
 
+    // This fixes the phasing for parallel lines on the left side of the base line for the octants
+    // where the line perpendicular moves "away" from the line body.
     let flip = if seed_line_step.minor == -parallel_step.major {
         -1
     } else {
@@ -142,21 +144,24 @@ fn thickline(
             (
                 &mut point_right,
                 MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
-                Rgb888::YELLOW,
+                Rgb888::CSS_DARK_GOLDENROD,
                 &mut seed_line_error_right,
                 &mut parallel_error_right,
+                // Fix phasing for parallel lines on the right hand side of the base line
                 -flip,
             )
         } else {
             (
                 &mut point_left,
                 seed_line_step,
-                Rgb888::MAGENTA,
+                Rgb888::CSS_SALMON,
                 &mut seed_line_error,
                 &mut parallel_error,
                 flip,
             )
         };
+
+        // Pixel(*point, c).draw(display)?;
 
         parallel_line(
             *point,
@@ -178,25 +183,24 @@ fn thickline(
             if *parallel_error > threshold {
                 if toggle {
                     if thickness_accumulator.pow(2) <= thickness_threshold {
-                        // Pixel(p, Rgb888::CYAN).draw(display)?;
+                        // Pixel(*point, Rgb888::CYAN).draw(display)?;
 
-                        parallel_line(
-                            *point,
-                            line,
-                            parallel_step,
-                            parallel_delta,
-                            // TODO: Why do I need idk here?
-                            (*parallel_error + e_major + e_minor) * flip,
-                            Rgb888::CYAN,
-                            // For the side where the Bresenham params step "away" from the line
-                            // body, skip the first pixel to prevent jaggies on the starting edge.
-                            !is_right && flip != 1,
-                            // TODO: Explain or at least understand the haxx here
-                            if flip == 1 { -1 } else { 0 },
-                            // !is_right,
-                            // -1,
-                            display,
-                        )?;
+                        // parallel_line(
+                        //     *point,
+                        //     line,
+                        //     parallel_step,
+                        //     parallel_delta,
+                        //     *parallel_error + e_minor + e_major,
+                        //     Rgb888::CYAN,
+                        //     // For the side where the Bresenham params step "away" from the line
+                        //     // body, skip the first pixel to prevent jaggies on the starting edge.
+                        //     // !is_right && flip != 1,
+                        //     // TODO: Explain or at least understand the haxx here
+                        //     // if flip == 1 { -1 } else { 0 },
+                        //     false,
+                        //     0,
+                        //     display,
+                        // )?;
                     }
                 }
 
@@ -215,9 +219,9 @@ fn thickline(
 
     // Pixel(line.start, Rgb888::RED).draw(display)?;
 
-    line.translate(Point::new(0, width * 2 + 5))
-        .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
-        .draw(display)?;
+    // line.translate(Point::new(0, width * 2 + 5))
+    //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
+    //     .draw(display)?;
 
     Ok(())
 }
