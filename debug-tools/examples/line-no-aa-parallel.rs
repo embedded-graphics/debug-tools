@@ -169,7 +169,7 @@ fn thickline(
             *parallel_error * flip,
             c,
             false,
-            0,
+            last_offset,
             display,
         )?;
 
@@ -202,7 +202,7 @@ fn thickline(
                                 // line body, we must reduce its total length by 1 to prevent jagged
                                 // edges on the end edge of the line.
                                 -1
-                            },
+                            } + last_offset,
                             display,
                         )?;
                     }
