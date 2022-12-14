@@ -185,22 +185,22 @@ fn thickline(
                     if thickness_accumulator.pow(2) <= thickness_threshold {
                         // Pixel(*point, Rgb888::CYAN).draw(display)?;
 
-                        // parallel_line(
-                        //     *point,
-                        //     line,
-                        //     parallel_step,
-                        //     parallel_delta,
-                        //     *parallel_error + e_minor + e_major,
-                        //     Rgb888::CYAN,
-                        //     // For the side where the Bresenham params step "away" from the line
-                        //     // body, skip the first pixel to prevent jaggies on the starting edge.
-                        //     // !is_right && flip != 1,
-                        //     // TODO: Explain or at least understand the haxx here
-                        //     // if flip == 1 { -1 } else { 0 },
-                        //     false,
-                        //     0,
-                        //     display,
-                        // )?;
+                        parallel_line(
+                            *point,
+                            line,
+                            parallel_step,
+                            parallel_delta,
+                            (*parallel_error + e_minor + e_major) * flip,
+                            Rgb888::CYAN,
+                            // For the side where the Bresenham params step "away" from the line
+                            // body, skip the first pixel to prevent jaggies on the starting edge.
+                            // !is_right && flip != 1,
+                            // TODO: Explain or at least understand the haxx here
+                            // if flip == 1 { -1 } else { 0 },
+                            false,
+                            0,
+                            display,
+                        )?;
                     }
                 }
 
