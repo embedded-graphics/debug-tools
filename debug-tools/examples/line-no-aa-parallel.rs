@@ -189,7 +189,8 @@ fn thickline(
                             parallel_step,
                             parallel_delta,
                             (*parallel_error + e_minor + e_major) * flip,
-                            Rgb888::CYAN,
+                            // Rgb888::CYAN,
+                            c,
                             // If we're on the side of the base line where the perpendicular
                             // Bresenham steps "into" the thick line body, skip the first extra
                             // line point as it's on the wrong side of the perpendicular and leads
@@ -226,6 +227,105 @@ fn thickline(
     // line.translate(Point::new(0, width * 2 + 5))
     //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
     //     .draw(display)?;
+
+    let (mut point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
+        (
+            &mut point_right,
+            MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
+            Rgb888::CSS_DARK_GOLDENROD,
+            &mut seed_line_error_right,
+            &mut parallel_error_right,
+            // Fix phasing for parallel lines on the right hand side of the base line
+            -original_flip,
+        )
+    } else {
+        (
+            &mut point_left,
+            seed_line_step,
+            Rgb888::CSS_SALMON,
+            &mut seed_line_error,
+            &mut parallel_error,
+            original_flip,
+        )
+    };
+
+    parallel_line_aa(
+        *point,
+        line,
+        parallel_step,
+        parallel_delta,
+        *parallel_error * flip,
+        c,
+        false,
+        last_offset,
+        display,
+    )?;
+
+    Ok(())
+}
+
+fn parallel_line_aa(
+    start: Point,
+    line: Line,
+    step: MajorMinor<Point>,
+    delta: MajorMinor<i32>,
+    start_error: i32,
+    c: Rgb888,
+    skip_first: bool,
+    mut last_offset: i32,
+    display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
+) -> Result<(), std::convert::Infallible> {
+    let mut point = start;
+
+    let dx = delta.major.abs();
+    let dy = delta.minor.abs();
+
+    let threshold = dx - 2 * dy;
+    let e_minor = -2 * dx;
+    let e_major = 2 * dy;
+    let mut length = dx + 1;
+    let mut error = start_error;
+
+    if skip_first {
+        // Some of the length was consumed by this initial skip iteration. If this is omitted, the
+        // line will be drawn 1px too long.
+        last_offset -= 1;
+
+        if error > threshold {
+            point += step.minor;
+            error += e_minor;
+        }
+
+        error += e_major;
+        point += step.major;
+    }
+
+    for _i in 0..(length + last_offset) {
+        let bright = 1.0 - (-((error + threshold) as f32 / e_minor as f32)).max(0.0);
+
+        // println!(
+        //     "{error} : {threshold}, {e_major}, {e_minor}, {} {} | {}",
+        //     e_major / 2,
+        //     e_minor / 2,
+        //     bright
+        // );
+
+        let c = Rgb888::new(
+            (bright * c.r() as f32) as u8,
+            (bright * c.g() as f32) as u8,
+            (bright * c.b() as f32) as u8,
+        );
+
+        Pixel(point, c).draw(display)?;
+
+        if error > threshold {
+            point += step.minor;
+            error += e_minor;
+        }
+
+        error += e_major;
+        point += step.major;
+    }
 
     Ok(())
 }
