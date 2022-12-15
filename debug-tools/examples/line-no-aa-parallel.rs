@@ -334,12 +334,12 @@ fn parallel_line_aa(
     let mut bright_int: i32 = grad_step_int;
 
     for _i in 0..(length + last_offset) {
-        let b = bright_int;
+        let b = if invert { bright_int } else { 255 - bright_int };
 
         let c = Rgb888::new(
-            ((bright_int * c.r() as i32) / 255) as u8,
-            ((bright_int * c.g() as i32) / 255) as u8,
-            ((bright_int * c.b() as i32) / 255) as u8,
+            ((b * c.r() as i32) / 255) as u8,
+            ((b * c.g() as i32) / 255) as u8,
+            ((b * c.b() as i32) / 255) as u8,
         );
 
         Pixel(point, c).draw(display)?;
