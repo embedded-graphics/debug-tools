@@ -182,9 +182,9 @@ fn thickline(
 
         Pixel(point, Rgb888::MAGENTA).draw(display)?;
 
-        if !swap {
-            Pixel(point + perp_direction, aa_color).draw(display)?;
-        }
+        // if !swap {
+        //     Pixel(point + perp_direction, aa_color).draw(display)?;
+        // }
 
         bright = (bright - slope).max(0.0);
 

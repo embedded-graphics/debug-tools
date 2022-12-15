@@ -1,6 +1,6 @@
 use embedded_graphics::{
     geometry::AnchorPoint,
-    mono_font::{latin1::FONT_6X10, MonoTextStyle},
+    mono_font::{ascii::FONT_6X10, MonoTextStyle},
     pixelcolor::{Rgb565, WebColors},
     prelude::*,
     primitives::Line,
