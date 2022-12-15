@@ -325,21 +325,21 @@ fn parallel_line_aa(
         point += step.major;
     }
 
-    let grad_step = (dy as f32 / dx as f32);
-    // The closer we get to diagonal, the more the gradient must be scaled so the max value becomes
-    // 0.5
-    let grad_step = grad_step * (1.0 - grad_step / 2.0);
-    let reset = 0.0;
+    let grad_step_int = (dy * 255) / dx;
+    // The gradient step is scaled based on how close to the diagonal we are. Horizontal/vertical
+    // uses a scale of 1.0, trending to a scale of 0.5 for the diagonal. This allows diagonal lines
+    // to have proper AA with each AA pixel having 0.5 brightness.
+    let grad_step_int = (grad_step_int * 255) / (255 + grad_step_int);
     // We're in the center of a pixel at the start of the line
-    let mut bright = grad_step * 0.5;
+    let mut bright_int: i32 = grad_step_int;
 
     for _i in 0..(length + last_offset) {
-        let b = bright;
+        let b = bright_int;
 
         let c = Rgb888::new(
-            (b * c.r() as f32) as u8,
-            (b * c.g() as f32) as u8,
-            (b * c.b() as f32) as u8,
+            ((bright_int * c.r() as i32) / 255) as u8,
+            ((bright_int * c.g() as i32) / 255) as u8,
+            ((bright_int * c.b() as i32) / 255) as u8,
         );
 
         Pixel(point, c).draw(display)?;
@@ -347,12 +347,12 @@ fn parallel_line_aa(
         if error > threshold {
             point += step.minor;
             error += e_minor;
-            bright = reset;
+            bright_int = 0;
         }
 
         error += e_major;
         point += step.major;
-        bright += grad_step;
+        bright_int += grad_step_int;
     }
 
     Ok(())
