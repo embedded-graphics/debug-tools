@@ -276,8 +276,8 @@ fn thickline(
             parallel_step,
             parallel_delta,
             parallel_error * flip,
-            // Rgb888::CSS_SALMON,
-            Rgb888::CYAN,
+            Rgb888::CSS_SALMON,
+            // Rgb888::CYAN,
             false,
             flip == -1,
             last_offset,
@@ -324,15 +324,14 @@ fn parallel_line_aa(
         error += e_major;
         point += step.major;
     }
-    println!("--- {invert}");
 
-    let grad = (dy as f32 / dx as f32);
-
-    let grad_step = (dy as f32 / dx as f32) * (1.0 - grad / 2.0);
+    let grad_step = (dy as f32 / dx as f32);
+    // The closer we get to diagonal, the more the gradient must be scaled so the max value becomes
+    // 0.5
+    let grad_step = grad_step * (1.0 - grad_step / 2.0);
     let reset = 0.0;
-    let mut bright = 0.0f32;
-
-    dbg!(grad_step);
+    // We're in the center of a pixel at the start of the line
+    let mut bright = grad_step * 0.5;
 
     for _i in 0..(length + last_offset) {
         let b = bright;
