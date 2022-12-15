@@ -255,20 +255,20 @@ fn thickline(
     let flip = original_flip;
 
     if toggle {
-        parallel_line_aa(
-            point_right,
-            line,
-            parallel_step,
-            parallel_delta,
-            // parallel_error_right * -flip,
-            parallel_error_right * -flip,
-            // Rgb888::CSS_DARK_GOLDENROD,
-            Rgb888::CYAN,
-            false,
-            flip == 1,
-            last_offset,
-            display,
-        )?;
+        // parallel_line_aa(
+        //     point_right,
+        //     line,
+        //     parallel_step,
+        //     parallel_delta,
+        //     // parallel_error_right * -flip,
+        //     parallel_error_right * -flip,
+        //     // Rgb888::CSS_DARK_GOLDENROD,
+        //     Rgb888::CYAN,
+        //     false,
+        //     flip == 1,
+        //     last_offset,
+        //     display,
+        // )?;
 
         parallel_line_aa(
             point_left,
@@ -324,26 +324,23 @@ fn parallel_line_aa(
         error += e_major;
         point += step.major;
     }
-    println!("---");
+    println!("--- {invert}");
+
+    let grad = (dy as f32 / dx as f32);
+
+    let grad_step = (dy as f32 / dx as f32) * (1.0 - grad / 2.0);
+    let reset = 0.0;
+    let mut bright = 0.0f32;
+
+    dbg!(grad_step);
 
     for _i in 0..(length + last_offset) {
-        let bright = if !invert {
-            1.0 - (-((error + threshold) as f32 / e_minor as f32)).max(0.0)
-        } else {
-            (-((error + threshold) as f32 / e_minor as f32)).max(0.0)
-        };
-
-        println!(
-            "{error} : {threshold}, {e_major}, {e_minor}, {} {} | {}",
-            e_major / 2,
-            e_minor / 2,
-            bright
-        );
+        let b = bright;
 
         let c = Rgb888::new(
-            (bright * c.r() as f32) as u8,
-            (bright * c.g() as f32) as u8,
-            (bright * c.b() as f32) as u8,
+            (b * c.r() as f32) as u8,
+            (b * c.g() as f32) as u8,
+            (b * c.b() as f32) as u8,
         );
 
         Pixel(point, c).draw(display)?;
@@ -351,10 +348,12 @@ fn parallel_line_aa(
         if error > threshold {
             point += step.minor;
             error += e_minor;
+            bright = reset;
         }
 
         error += e_major;
         point += step.major;
+        bright += grad_step;
     }
 
     Ok(())
