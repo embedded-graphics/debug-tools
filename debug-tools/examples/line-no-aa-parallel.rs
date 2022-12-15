@@ -179,34 +179,32 @@ fn thickline(
             thickness_accumulator += 2 * dy;
 
             if *parallel_error > threshold {
-                if toggle {
-                    if thickness_accumulator.pow(2) <= thickness_threshold {
-                        // Pixel(*point, Rgb888::CYAN).draw(display)?;
+                if thickness_accumulator.pow(2) <= thickness_threshold {
+                    // Pixel(*point, Rgb888::CYAN).draw(display)?;
 
-                        parallel_line(
-                            *point,
-                            line,
-                            parallel_step,
-                            parallel_delta,
-                            (*parallel_error + e_minor + e_major) * flip,
-                            // Rgb888::CYAN,
-                            c,
-                            // If we're on the side of the base line where the perpendicular
-                            // Bresenham steps "into" the thick line body, skip the first extra
-                            // line point as it's on the wrong side of the perpendicular and leads
-                            // to a jagged edge.
-                            original_flip == -1 && !is_right || original_flip == 1 && is_right,
-                            if original_flip == -1 && !is_right || original_flip == 1 && is_right {
-                                0
-                            } else {
-                                // Because the opposite side's extra lines start one step into the thick
-                                // line body, we must reduce its total length by 1 to prevent jagged
-                                // edges on the end edge of the line.
-                                -1
-                            } + last_offset,
-                            display,
-                        )?;
-                    }
+                    parallel_line(
+                        *point,
+                        line,
+                        parallel_step,
+                        parallel_delta,
+                        (*parallel_error + e_minor + e_major) * flip,
+                        // Rgb888::CYAN,
+                        c,
+                        // If we're on the side of the base line where the perpendicular
+                        // Bresenham steps "into" the thick line body, skip the first extra
+                        // line point as it's on the wrong side of the perpendicular and leads
+                        // to a jagged edge.
+                        original_flip == -1 && !is_right || original_flip == 1 && is_right,
+                        if original_flip == -1 && !is_right || original_flip == 1 && is_right {
+                            0
+                        } else {
+                            // Because the opposite side's extra lines start one step into the thick
+                            // line body, we must reduce its total length by 1 to prevent jagged
+                            // edges on the end edge of the line.
+                            -1
+                        } + last_offset,
+                        display,
+                    )?;
                 }
 
                 *parallel_error += e_minor;
@@ -228,38 +226,64 @@ fn thickline(
     //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
     //     .draw(display)?;
 
-    let (mut point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
-        (
-            &mut point_right,
-            MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
-            Rgb888::CSS_DARK_GOLDENROD,
-            &mut seed_line_error_right,
-            &mut parallel_error_right,
-            // Fix phasing for parallel lines on the right hand side of the base line
-            -original_flip,
-        )
-    } else {
-        (
-            &mut point_left,
-            seed_line_step,
-            Rgb888::CSS_SALMON,
-            &mut seed_line_error,
-            &mut parallel_error,
-            original_flip,
-        )
-    };
+    // let (mut point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
+    //     (
+    //         &mut point_right,
+    //         MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
+    //         Rgb888::CSS_DARK_GOLDENROD,
+    //         &mut seed_line_error_right,
+    //         &mut parallel_error_right,
+    //         // Fix phasing for parallel lines on the right hand side of the base line
+    //         -original_flip,
+    //     )
+    // } else {
+    //     (
+    //         &mut point_left,
+    //         seed_line_step,
+    //         Rgb888::CSS_SALMON,
+    //         &mut seed_line_error,
+    //         &mut parallel_error,
+    //         original_flip,
+    //     )
+    // };
 
-    parallel_line_aa(
-        *point,
-        line,
-        parallel_step,
-        parallel_delta,
-        *parallel_error * flip,
-        c,
-        false,
-        last_offset,
-        display,
-    )?;
+    // let flip = if is_right {
+    //     -original_flip
+    // } else {
+    //     original_flip
+    // };
+    let flip = original_flip;
+
+    if toggle {
+        parallel_line_aa(
+            point_right,
+            line,
+            parallel_step,
+            parallel_delta,
+            // parallel_error_right * -flip,
+            parallel_error_right * -flip,
+            // Rgb888::CSS_DARK_GOLDENROD,
+            Rgb888::CYAN,
+            false,
+            flip == 1,
+            last_offset,
+            display,
+        )?;
+
+        parallel_line_aa(
+            point_left,
+            line,
+            parallel_step,
+            parallel_delta,
+            parallel_error * flip,
+            // Rgb888::CSS_SALMON,
+            Rgb888::CYAN,
+            false,
+            flip == -1,
+            last_offset,
+            display,
+        )?;
+    }
 
     Ok(())
 }
@@ -272,6 +296,7 @@ fn parallel_line_aa(
     start_error: i32,
     c: Rgb888,
     skip_first: bool,
+    invert: bool,
     mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
@@ -299,16 +324,21 @@ fn parallel_line_aa(
         error += e_major;
         point += step.major;
     }
+    println!("---");
 
     for _i in 0..(length + last_offset) {
-        let bright = 1.0 - (-((error + threshold) as f32 / e_minor as f32)).max(0.0);
+        let bright = if !invert {
+            1.0 - (-((error + threshold) as f32 / e_minor as f32)).max(0.0)
+        } else {
+            (-((error + threshold) as f32 / e_minor as f32)).max(0.0)
+        };
 
-        // println!(
-        //     "{error} : {threshold}, {e_major}, {e_minor}, {} {} | {}",
-        //     e_major / 2,
-        //     e_minor / 2,
-        //     bright
-        // );
+        println!(
+            "{error} : {threshold}, {e_major}, {e_minor}, {} {} | {}",
+            e_major / 2,
+            e_minor / 2,
+            bright
+        );
 
         let c = Rgb888::new(
             (bright * c.r() as f32) as u8,
