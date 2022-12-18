@@ -274,7 +274,6 @@ fn thickline(
             point_left,
             line,
             parallel_step,
-            parallel_delta,
             parallel_error * flip,
             Rgb888::CSS_SALMON,
             // Rgb888::CYAN,
@@ -292,7 +291,6 @@ fn parallel_line_aa(
     start: Point,
     line: Line,
     step: MajorMinor<Point>,
-    delta: MajorMinor<i32>,
     start_error: i32,
     c: Rgb888,
     skip_first: bool,
@@ -301,6 +299,13 @@ fn parallel_line_aa(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
+
+    let delta = line.delta();
+    let delta = if delta.y.abs() >= delta.x.abs() {
+        MajorMinor::new(delta.y, delta.x)
+    } else {
+        MajorMinor::new(delta.x, delta.y)
+    };
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -327,8 +332,9 @@ fn parallel_line_aa(
 
     let grad_step = (dy * 255) / dx;
     // The gradient step is scaled based on how close to the diagonal we are. Horizontal/vertical
-    // uses a scale of 1.0, trending to a scale of 0.5 for the diagonal. This allows diagonal lines
-    // to have proper AA with each AA pixel having 0.5 brightness.
+    // values are scaled by 1.0, trending to a scale of 0.5 for the diagonal. This allows diagonal
+    // lines to have proper AA with each AA pixel having 0.5 brightness. Everything is multiplied
+    // by 255 so we can do this with no floating point.
     let grad_step = (grad_step * 255) / (255 + grad_step);
     // We're in the center of a pixel at the start of the line, so start at half brightness
     let mut bright_int: i32 = 127;
