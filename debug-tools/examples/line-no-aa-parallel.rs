@@ -129,6 +129,9 @@ fn thickline(
     // TODO: The current extents() function needs to respect this too, as well as stroke offset
     let mut is_right = true;
 
+    let mut right_side_aa_done = false;
+    let mut left_side_aa_done = false;
+
     while thickness_accumulator.pow(2) <= thickness_threshold {
         let (point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
             (
@@ -199,6 +202,36 @@ fn thickline(
                     )?;
                 }
 
+                // Next step would be line edge, so draw an extra AA line
+                if thickness_accumulator.pow(2) + 2 * dx > thickness_threshold {
+                    if is_right {
+                        right_side_aa_done = true;
+                    } else {
+                        left_side_aa_done = true;
+                    }
+
+                    if toggle {
+                        parallel_line_aa(
+                            *point,
+                            line,
+                            parallel_step,
+                            (*parallel_error + e_minor + e_major) * flip,
+                            c,
+                            original_flip == -1 && !is_right || original_flip == 1 && is_right,
+                            true,
+                            if original_flip == -1 && !is_right || original_flip == 1 && is_right {
+                                0
+                            } else {
+                                // Because the opposite side's extra lines start one step into the thick
+                                // line body, we must reduce its total length by 1 to prevent jagged
+                                // edges on the end edge of the line.
+                                -1
+                            } + last_offset,
+                            display,
+                        )?;
+                    }
+                }
+
                 *parallel_error += e_minor;
             }
 
@@ -215,18 +248,35 @@ fn thickline(
     let flip = original_flip;
 
     if toggle {
-        parallel_line_aa(
-            point_left,
-            line,
-            parallel_step,
-            parallel_error * flip,
-            Rgb888::CSS_SALMON,
-            // Rgb888::CYAN,
-            false,
-            flip == -1,
-            last_offset,
-            display,
-        )?;
+        if !left_side_aa_done {
+            parallel_line_aa(
+                point_left,
+                line,
+                parallel_step,
+                parallel_error * flip,
+                Rgb888::CSS_SALMON,
+                false,
+                flip == -1,
+                last_offset,
+                display,
+            )?;
+        }
+
+        dbg!(flip, original_flip);
+
+        if !right_side_aa_done {
+            parallel_line_aa(
+                point_right,
+                line,
+                parallel_step,
+                parallel_error * -flip,
+                Rgb888::CSS_DARK_GOLDENROD,
+                false,
+                flip == 1,
+                last_offset,
+                display,
+            )?;
+        }
     }
 
     Ok(())
