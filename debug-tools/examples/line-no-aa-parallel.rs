@@ -336,8 +336,10 @@ fn parallel_line_aa(
     // lines to have proper AA with each AA pixel having 0.5 brightness. Everything is multiplied
     // by 255 so we can do this with no floating point.
     let grad_step = (grad_step * 255) / (255 + grad_step);
-    // We're in the center of a pixel at the start of the line, so start at half brightness
-    let mut bright_int: i32 = 127;
+    // We're in the center of a pixel at the start of the line, so start at half brightness. We'll
+    // subtract one gradient step to prevent fireflies due to numerical errors in the second
+    // iteration of the gradient loop.
+    let mut bright_int: i32 = 127 - grad_step;
 
     for _i in 0..(length + last_offset) {
         let b = if invert { bright_int } else { 255 - bright_int };
