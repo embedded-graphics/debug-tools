@@ -1,12 +1,5 @@
 use embedded_graphics::{
-    geometry::PointExt,
-    mock_display::MockDisplay,
-    pixelcolor::Rgb888,
-    prelude::*,
-    primitives::{
-        common::{LineSide, LinearEquation},
-        Line,
-    },
+    geometry::PointExt, mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
@@ -61,8 +54,6 @@ fn thickline(
     if width == 0 {
         return Ok(());
     }
-
-    let Line { start, end } = line;
 
     let seed_line = line.perpendicular();
 
@@ -139,7 +130,7 @@ fn thickline(
     let mut is_right = true;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        let (mut point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
+        let (point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
             (
                 &mut point_right,
                 MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
@@ -221,56 +212,9 @@ fn thickline(
         is_right = !is_right;
     }
 
-    // Pixel(line.start, Rgb888::RED).draw(display)?;
-
-    // line.translate(Point::new(0, width * 2 + 5))
-    //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
-    //     .draw(display)?;
-
-    // let (mut point, inc, c, seed_line_error, parallel_error, flip) = if is_right {
-    //     (
-    //         &mut point_right,
-    //         MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
-    //         Rgb888::CSS_DARK_GOLDENROD,
-    //         &mut seed_line_error_right,
-    //         &mut parallel_error_right,
-    //         // Fix phasing for parallel lines on the right hand side of the base line
-    //         -original_flip,
-    //     )
-    // } else {
-    //     (
-    //         &mut point_left,
-    //         seed_line_step,
-    //         Rgb888::CSS_SALMON,
-    //         &mut seed_line_error,
-    //         &mut parallel_error,
-    //         original_flip,
-    //     )
-    // };
-
-    // let flip = if is_right {
-    //     -original_flip
-    // } else {
-    //     original_flip
-    // };
     let flip = original_flip;
 
     if toggle {
-        // parallel_line_aa(
-        //     point_right,
-        //     line,
-        //     parallel_step,
-        //     parallel_delta,
-        //     // parallel_error_right * -flip,
-        //     parallel_error_right * -flip,
-        //     // Rgb888::CSS_DARK_GOLDENROD,
-        //     Rgb888::CYAN,
-        //     false,
-        //     flip == 1,
-        //     last_offset,
-        //     display,
-        // )?;
-
         parallel_line_aa(
             point_left,
             line,
