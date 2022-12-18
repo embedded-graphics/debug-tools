@@ -55,6 +55,7 @@ fn thickline(
     line: Line,
     width: i32,
     toggle: bool,
+    toggle2: bool,
     last_offset: i32,
 ) -> Result<(), std::convert::Infallible> {
     if width == 0 {
@@ -422,6 +423,7 @@ struct LineDebug {
     end: Point,
     stroke_width: u32,
     toggle: bool,
+    toggle2: bool,
     last_offset: i32,
 }
 
@@ -441,6 +443,7 @@ impl App for LineDebug {
             // end: start + Point::new(100, 0),
             stroke_width: 10,
             toggle: true,
+            toggle2: true,
             last_offset: 0,
         }
     }
@@ -451,6 +454,7 @@ impl App for LineDebug {
             Parameter::new("end", &mut self.end),
             Parameter::new("stroke", &mut self.stroke_width),
             Parameter::new("toggle", &mut self.toggle),
+            Parameter::new("toggle2", &mut self.toggle2),
             Parameter::new("last offset", &mut self.last_offset),
         ]
     }
@@ -472,6 +476,7 @@ impl App for LineDebug {
             Line::new(self.start, self.end),
             width,
             self.toggle,
+            self.toggle2,
             self.last_offset,
         )?;
 
