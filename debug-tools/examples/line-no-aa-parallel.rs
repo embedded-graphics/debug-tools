@@ -308,7 +308,7 @@ fn parallel_line_aa(
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    let mut length = dx + 1;
+    let length = dx + 1;
     let mut error = start_error;
 
     if skip_first {
@@ -325,13 +325,13 @@ fn parallel_line_aa(
         point += step.major;
     }
 
-    let grad_step_int = (dy * 255) / dx;
+    let grad_step = (dy * 255) / dx;
     // The gradient step is scaled based on how close to the diagonal we are. Horizontal/vertical
     // uses a scale of 1.0, trending to a scale of 0.5 for the diagonal. This allows diagonal lines
     // to have proper AA with each AA pixel having 0.5 brightness.
-    let grad_step_int = (grad_step_int * 255) / (255 + grad_step_int);
-    // We're in the center of a pixel at the start of the line
-    let mut bright_int: i32 = grad_step_int;
+    let grad_step = (grad_step * 255) / (255 + grad_step);
+    // We're in the center of a pixel at the start of the line, so start at half brightness
+    let mut bright_int: i32 = 127;
 
     for _i in 0..(length + last_offset) {
         let b = if invert { bright_int } else { 255 - bright_int };
@@ -352,7 +352,7 @@ fn parallel_line_aa(
 
         error += e_major;
         point += step.major;
-        bright_int += grad_step_int;
+        bright_int += grad_step;
     }
 
     Ok(())
