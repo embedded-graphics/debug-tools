@@ -203,7 +203,7 @@ fn thickline(
                 }
 
                 // Next step would be line edge, so draw an extra AA line
-                if thickness_accumulator.pow(2) > thickness_threshold {
+                if thickness_accumulator.pow(2) + 2 * dy > thickness_threshold {
                     if is_right {
                         right_side_aa_done = true;
                     } else {
