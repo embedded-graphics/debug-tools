@@ -344,7 +344,6 @@ fn parallel_line_aa(
             ((b * c.g() as i32) / 255) as u8,
             ((b * c.b() as i32) / 255) as u8,
         );
-        let c = Rgb888::CYAN;
 
         Pixel(point, c).draw(display)?;
 
