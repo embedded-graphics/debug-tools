@@ -206,8 +206,10 @@ fn thickline(
                 if thickness_accumulator.pow(2) + 2 * dy > thickness_threshold {
                     if is_right {
                         right_side_aa_done = true;
+                        println!("Right side AA inside loop");
                     } else {
                         left_side_aa_done = true;
+                        println!("Left side AA inside loop");
                     }
 
                     if toggle {
@@ -267,7 +269,7 @@ fn thickline(
                 point_right,
                 line,
                 parallel_step,
-                parallel_error * -flip,
+                parallel_error_right * -flip,
                 Rgb888::CSS_DARK_GOLDENROD,
                 false,
                 flip == 1,
@@ -342,6 +344,7 @@ fn parallel_line_aa(
             ((b * c.g() as i32) / 255) as u8,
             ((b * c.b() as i32) / 255) as u8,
         );
+        let c = Rgb888::CYAN;
 
         Pixel(point, c).draw(display)?;
 
@@ -371,6 +374,9 @@ fn parallel_line(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
+
+    // Pixel(point, c).draw(display)?;
+    // return Ok(());
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
