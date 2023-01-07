@@ -120,7 +120,8 @@ fn thickline(
         1
     };
 
-    let thickness_threshold = (width * 2).pow(2) * line.delta().length_squared();
+    // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
+    let thickness_threshold = ((width - 1) * 2).pow(2) * line.delta().length_squared();
     // Add the first line drawn to the thickness. If this is left at zero, an extra line will be
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * dx;
@@ -137,7 +138,8 @@ fn thickline(
             (
                 &mut point_right,
                 MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
-                Rgb888::CSS_DARK_GOLDENROD,
+                // Rgb888::CSS_DARK_GOLDENROD,
+                Rgb888::CSS_SALMON,
                 &mut seed_line_error_right,
                 &mut parallel_error_right,
                 // Fix phasing for parallel lines on the right hand side of the base line
@@ -270,7 +272,7 @@ fn thickline(
                 line,
                 parallel_step,
                 parallel_error_right * -flip,
-                Rgb888::CSS_DARK_GOLDENROD,
+                Rgb888::CSS_SALMON,
                 false,
                 flip == 1,
                 last_offset,
