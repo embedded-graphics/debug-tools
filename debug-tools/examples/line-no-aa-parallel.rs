@@ -204,7 +204,9 @@ fn thickline(
                     )?;
                 }
 
-                // Next step would be line edge, so draw an extra AA line
+                // We're currently drawing an "extra" line. Special case: if the next step would be
+                // line edge, draw an extra AA line and mark it as not needing to be drawn after
+                // the main loop.
                 if thickness_accumulator.pow(2) + 2 * dy > thickness_threshold {
                     if is_right {
                         right_side_aa_done = true;
