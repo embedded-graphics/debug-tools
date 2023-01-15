@@ -208,34 +208,38 @@ fn thickline(
                 // line edge, draw an extra AA line and mark it as not needing to be drawn after
                 // the main loop.
                 if thickness_accumulator.pow(2) + 2 * dy > thickness_threshold {
-                    if is_right {
-                        right_side_aa_done = true;
-                        println!("Right side AA inside loop");
-                    } else {
-                        left_side_aa_done = true;
-                        println!("Left side AA inside loop");
-                    }
+                    // if is_right {
+                    //     right_side_aa_done = true;
+                    //     println!("Right side AA inside loop");
+                    // } else {
+                    //     left_side_aa_done = true;
+                    //     println!("Left side AA inside loop");
+                    // }
 
-                    if toggle {
-                        parallel_line_aa(
-                            *point,
-                            line,
-                            parallel_step,
-                            (*parallel_error + e_minor + e_major) * flip,
-                            c,
-                            original_flip == -1 && !is_right || original_flip == 1 && is_right,
-                            true,
-                            if original_flip == -1 && !is_right || original_flip == 1 && is_right {
-                                0
-                            } else {
-                                // Because the opposite side's extra lines start one step into the thick
-                                // line body, we must reduce its total length by 1 to prevent jagged
-                                // edges on the end edge of the line.
-                                -1
-                            } + last_offset,
-                            display,
-                        )?;
-                    }
+                    // if toggle {
+                    //     parallel_line_aa(
+                    //         *point,
+                    //         line,
+                    //         parallel_step,
+                    //         (*parallel_error + e_minor + e_major) * flip,
+                    //         c,
+                    //         original_flip == -1 && !is_right || original_flip == 1 && is_right,
+                    //         true,
+                    //         if original_flip == -1 && !is_right || original_flip == 1 && is_right {
+                    //             0
+                    //         } else {
+                    //             // Because the opposite side's extra lines start one step into the thick
+                    //             // line body, we must reduce its total length by 1 to prevent jagged
+                    //             // edges on the end edge of the line.
+                    //             -1
+                    //         } + last_offset,
+                    //         display,
+                    //     )?;
+                    // }
+
+                    // Makes right-side AA line hug the rest of the line body by undoing the
+                    // position increment at the end of the main loop.
+                    *point -= inc.major;
                 }
 
                 *parallel_error += e_minor;
