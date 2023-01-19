@@ -344,9 +344,13 @@ fn parallel_line_aa(
     // // iteration of the gradient loop.
     // let mut bright_int: i32 = 127 - grad_step;
 
-    let grad_step = dy as f32 / dx as f32;
+    let gradient = dy as f32 / dx as f32;
     // let mut bright_int = 0.5f32 - grad_step;
-    let grad_step = grad_step - (grad_step * grad_step) / 2.0;
+
+    // The closer we get to diagonal, the less we need to reduce the AA pixel
+    let grad_step = gradient - gradient.powi(2) / 2.0;
+
+    // Start at half brightness because we're "half way along" a Bresenham step
     let mut bright_int = 0.5;
 
     // Flat or vertical = gradient near 0
