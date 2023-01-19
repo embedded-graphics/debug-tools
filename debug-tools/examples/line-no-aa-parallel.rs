@@ -333,32 +333,46 @@ fn parallel_line_aa(
         point += step.major;
     }
 
-    let grad_step = (dy * 255) / dx;
-    // The gradient step is scaled based on how close to the diagonal we are. Horizontal/vertical
-    // values are scaled by 1.0, trending to a scale of 0.5 for the diagonal. This allows diagonal
-    // lines to have proper AA with each AA pixel having 0.5 brightness. Everything is multiplied
-    // by 255 so we can do this with no floating point.
-    let grad_step = (grad_step * 255) / (255 + grad_step);
-    // We're in the center of a pixel at the start of the line, so start at half brightness. We'll
-    // subtract one gradient step to prevent fireflies due to numerical errors in the second
-    // iteration of the gradient loop.
-    let mut bright_int: i32 = 127 - grad_step;
+    // let grad_step = (dy * 255) / dx;
+    // // The gradient step is scaled based on how close to the diagonal we are. Horizontal/vertical
+    // // values are scaled by 1.0, trending to a scale of 0.5 for the diagonal. This allows diagonal
+    // // lines to have proper AA with each AA pixel having 0.5 brightness. Everything is multiplied
+    // // by 255 so we can do this with no floating point.
+    // let grad_step = (grad_step * 255) / (255 + grad_step);
+    // // We're in the center of a pixel at the start of the line, so start at half brightness. We'll
+    // // subtract one gradient step to prevent fireflies due to numerical errors in the second
+    // // iteration of the gradient loop.
+    // let mut bright_int: i32 = 127 - grad_step;
+
+    let grad_step = dy as f32 / dx as f32;
+    // let mut bright_int = 0.5f32 - grad_step;
+    let grad_step = grad_step - (grad_step * grad_step) / 2.0;
+    let mut bright_int = 0.5;
+
+    // Flat or vertical = gradient near 0
+    // Diagonal = 1.0
 
     for _i in 0..(length + last_offset) {
-        let b = if invert { bright_int } else { 255 - bright_int };
+        let b = if invert { bright_int } else { 1.0 - bright_int };
 
         let c = Rgb888::new(
-            ((b * c.r() as i32) / 255) as u8,
-            ((b * c.g() as i32) / 255) as u8,
-            ((b * c.b() as i32) / 255) as u8,
+            (b * c.r() as f32) as u8,
+            (b * c.g() as f32) as u8,
+            (b * c.b() as f32) as u8,
         );
+
+        // let c = Rgb888::new(
+        //     ((b * c.r() as i32) / 255) as u8,
+        //     ((b * c.g() as i32) / 255) as u8,
+        //     ((b * c.b() as i32) / 255) as u8,
+        // );
 
         Pixel(point, c).draw(display)?;
 
         if error > threshold {
             point += step.minor;
             error += e_minor;
-            bright_int = 0;
+            bright_int = 0.0;
         }
 
         error += e_major;
