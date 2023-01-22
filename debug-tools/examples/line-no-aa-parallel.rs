@@ -272,19 +272,19 @@ fn thickline(
             )?;
         }
 
-        if !right_side_aa_done {
-            parallel_line_aa(
-                point_right,
-                line,
-                parallel_step,
-                parallel_error_right * -flip,
-                Rgb888::CSS_SALMON,
-                false,
-                flip == 1,
-                last_offset,
-                display,
-            )?;
-        }
+        // if !right_side_aa_done {
+        //     parallel_line_aa(
+        //         point_right,
+        //         line,
+        //         parallel_step,
+        //         parallel_error_right * -flip,
+        //         Rgb888::CSS_SALMON,
+        //         false,
+        //         flip == 1,
+        //         last_offset,
+        //         display,
+        //     )?;
+        // }
     }
 
     Ok(())
@@ -353,11 +353,25 @@ fn parallel_line_aa(
     // Start at half brightness because we're "half way along" a Bresenham step
     let mut bright_int = 0.5;
 
-    // Flat or vertical = gradient near 0
-    // Diagonal = 1.0
+    let range = threshold - e_minor;
+
+    println!("--- {range} {threshold} {e_minor} {e_major}");
 
     for _i in 0..(length + last_offset) {
         let b = if invert { bright_int } else { 1.0 - bright_int };
+
+        let error2 = error.min(threshold) as f32 / threshold as f32;
+        let error2 = (1.0 - error2) / 2.0;
+
+        println!(
+            "E {:+03} E2 {:0.3} B {:0.3} D {:0.3}",
+            error,
+            error2,
+            b,
+            f32::abs(error2 - b)
+        );
+
+        let b = error2.abs().min(1.0);
 
         let c = Rgb888::new(
             (b * c.r() as f32) as u8,
@@ -374,6 +388,7 @@ fn parallel_line_aa(
         Pixel(point, c).draw(display)?;
 
         if error > threshold {
+            println!("MINOR");
             point += step.minor;
             error += e_minor;
             bright_int = 0.0;
