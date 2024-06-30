@@ -18,7 +18,7 @@ impl<T> MajorMinor<T> {
 
 fn thickline(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    mut line: Line,
+    line: Line,
     width: i32,
 ) -> Result<(), std::convert::Infallible> {
     if width == 0 {
@@ -28,12 +28,6 @@ fn thickline(
     let non_mul_line = line;
 
     let seed_line = line.perpendicular();
-
-    let mut point_left = seed_line.start;
-    let mut point_right = seed_line.start;
-
-    line.start.y *= 256;
-    line.end.y *= 256;
 
     let seed_line_delta = seed_line.delta();
 
@@ -54,8 +48,7 @@ fn thickline(
         )
     };
 
-    // Don't draw line skeleton twice
-    point_right -= seed_line_step.major;
+    let mut point = seed_line.start;
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -64,7 +57,6 @@ fn thickline(
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let mut seed_line_error = 0;
-    let mut seed_line_error_right = e_major;
 
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
     let thickness_threshold = ((width - 1) * 2).pow(2) * non_mul_line.delta().length_squared();
@@ -72,41 +64,20 @@ fn thickline(
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * dx;
 
-    // Bias to one side of the line
-    // TODO: The current extents() function needs to respect this too, as well as stroke offset
-    let mut is_right = true;
-
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        let (point, inc, c, seed_line_error) = if is_right {
-            (
-                &mut point_right,
-                MajorMinor::new(-seed_line_step.major, -seed_line_step.minor),
-                // Rgb888::CSS_DARK_GOLDENROD,
-                Rgb888::CSS_SALMON,
-                &mut seed_line_error_right,
-            )
-        } else {
-            (
-                &mut point_left,
-                seed_line_step,
-                Rgb888::CSS_FOREST_GREEN,
-                &mut seed_line_error,
-            )
-        };
+        let c = Rgb888::CSS_FOREST_GREEN;
 
         Pixel(Point::new(point.x, point.y), c).draw(display)?;
 
-        if *seed_line_error > threshold {
-            *point += inc.minor;
-            *seed_line_error += e_minor;
+        if seed_line_error > threshold {
+            point += seed_line_step.minor;
+            seed_line_error += e_minor;
             thickness_accumulator += 2 * dy;
         }
 
-        *point += inc.major;
-        *seed_line_error += e_major;
+        point += seed_line_step.major;
+        seed_line_error += e_major;
         thickness_accumulator += 2 * dx;
-
-        is_right = !is_right;
     }
 
     Ok(())
