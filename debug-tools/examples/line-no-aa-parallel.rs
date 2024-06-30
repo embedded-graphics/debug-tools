@@ -49,12 +49,15 @@ impl<T> MajorMinor<T> {
 
 fn thickline(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    line: Line,
+    mut line: Line,
     width: i32,
     toggle: bool,
     toggle2: bool,
     last_offset: i32,
 ) -> Result<(), std::convert::Infallible> {
+    line.start.y *= 256;
+    line.end.y *= 256;
+
     if width == 0 {
         return Ok(());
     }
@@ -162,17 +165,17 @@ fn thickline(
 
         // Pixel(*point, c).draw(display)?;
 
-        parallel_line(
-            *point,
-            line,
-            parallel_step,
-            parallel_delta,
-            *parallel_error * flip,
-            c,
-            false,
-            last_offset,
-            display,
-        )?;
+        // parallel_line(
+        //     *point,
+        //     line,
+        //     parallel_step,
+        //     parallel_delta,
+        //     *parallel_error * flip,
+        //     c,
+        //     false,
+        //     last_offset,
+        //     display,
+        // )?;
 
         if *seed_line_error > threshold {
             *point += inc.minor;
@@ -183,29 +186,29 @@ fn thickline(
                 if thickness_accumulator.pow(2) <= thickness_threshold {
                     // Pixel(*point, Rgb888::CYAN).draw(display)?;
 
-                    parallel_line(
-                        *point,
-                        line,
-                        parallel_step,
-                        parallel_delta,
-                        (*parallel_error + e_minor + e_major) * flip,
-                        // Rgb888::CYAN,
-                        c,
-                        // If we're on the side of the base line where the perpendicular
-                        // Bresenham steps "into" the thick line body, skip the first extra
-                        // line point as it's on the wrong side of the perpendicular and leads
-                        // to a jagged edge.
-                        original_flip == -1 && !is_right || original_flip == 1 && is_right,
-                        if original_flip == -1 && !is_right || original_flip == 1 && is_right {
-                            0
-                        } else {
-                            // Because the opposite side's extra lines start one step into the thick
-                            // line body, we must reduce its total length by 1 to prevent jagged
-                            // edges on the end edge of the line.
-                            -1
-                        } + last_offset,
-                        display,
-                    )?;
+                    // parallel_line(
+                    //     *point,
+                    //     line,
+                    //     parallel_step,
+                    //     parallel_delta,
+                    //     (*parallel_error + e_minor + e_major) * flip,
+                    //     // Rgb888::CYAN,
+                    //     c,
+                    //     // If we're on the side of the base line where the perpendicular
+                    //     // Bresenham steps "into" the thick line body, skip the first extra
+                    //     // line point as it's on the wrong side of the perpendicular and leads
+                    //     // to a jagged edge.
+                    //     original_flip == -1 && !is_right || original_flip == 1 && is_right,
+                    //     if original_flip == -1 && !is_right || original_flip == 1 && is_right {
+                    //         0
+                    //     } else {
+                    //         // Because the opposite side's extra lines start one step into the thick
+                    //         // line body, we must reduce its total length by 1 to prevent jagged
+                    //         // edges on the end edge of the line.
+                    //         -1
+                    //     } + last_offset,
+                    //     display,
+                    // )?;
                 }
 
                 // We're currently drawing an "extra" line. Special case: if the next step would be
@@ -267,8 +270,9 @@ fn thickline(
                 point_left,
                 line,
                 parallel_step,
+                parallel_delta,
                 parallel_error * flip,
-                Rgb888::CSS_SALMON,
+                Rgb888::CSS_ALICE_BLUE,
                 false,
                 flip == -1,
                 last_offset,
@@ -298,6 +302,7 @@ fn parallel_line_aa(
     start: Point,
     line: Line,
     step: MajorMinor<Point>,
+    delta: MajorMinor<i32>,
     start_error: i32,
     c: Rgb888,
     skip_first: bool,
@@ -307,12 +312,12 @@ fn parallel_line_aa(
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
 
-    let delta = line.delta();
-    let delta = if delta.y.abs() >= delta.x.abs() {
-        MajorMinor::new(delta.y, delta.x)
-    } else {
-        MajorMinor::new(delta.x, delta.y)
-    };
+    // Pixel(point, c).draw(display)?;
+    // return Ok(());
+
+    // https://computergraphics.stackexchange.com/a/10675
+    let step = MajorMinor::new(step.major, step.minor);
+    let delta = MajorMinor::new(delta.major, delta.minor);
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -320,7 +325,7 @@ fn parallel_line_aa(
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    let length = dx + 1;
+    let mut length = dx + 1;
     let mut error = start_error;
 
     if skip_first {
@@ -337,74 +342,42 @@ fn parallel_line_aa(
         point += step.major;
     }
 
-    // let grad_step = (dy * 255) / dx;
-    // // The gradient step is scaled based on how close to the diagonal we are. Horizontal/vertical
-    // // values are scaled by 1.0, trending to a scale of 0.5 for the diagonal. This allows diagonal
-    // // lines to have proper AA with each AA pixel having 0.5 brightness. Everything is multiplied
-    // // by 255 so we can do this with no floating point.
-    // let grad_step = (grad_step * 255) / (255 + grad_step);
-    // // We're in the center of a pixel at the start of the line, so start at half brightness. We'll
-    // // subtract one gradient step to prevent fireflies due to numerical errors in the second
-    // // iteration of the gradient loop.
-    // let mut bright_int: i32 = 127 - grad_step;
-
-    let gradient = dy as f32 / dx as f32;
-    // let mut bright_int = 0.5f32 - grad_step;
-
-    // The closer we get to diagonal, the less we need to reduce the AA pixel
-    let grad_step = gradient - gradient.powi(2) / 2.0;
-
-    // Start at half brightness because we're "half way along" a Bresenham step
-    let mut bright_int = 0.5;
-
-    println!("--- dy/dx {gradient} T {threshold} Emin {e_minor} Emaj {e_major} G {gradient}");
-
-    let mut accum = 0.0f32;
-
-    let mut x = line.start.x as f32;
-    let mut y = line.start.y as f32;
-
     for _i in 0..(length + last_offset) {
-        let b = if invert { bright_int } else { 1.0 - bright_int };
+        // https://computergraphics.stackexchange.com/a/10675
+        let draw_p = Point::new(point.x, point.y >> 8);
 
-        let error2 = error.min(threshold) as f32 / threshold as f32;
-        let error2 = (1.0 - error2) / 2.0;
+        Pixel(draw_p, Rgb888::CYAN).draw(display)?;
 
-        let e =
-            ((error as f32 / (2.0 * dx as f32)) / (threshold as f32 / (2.0 * dx as f32))).min(1.0);
+        let aa_colour = {
+            let c = Rgb888::RED;
 
-        let b = if e < 0.0 { 1.0 + e.abs() } else { 1.0 - e } / 2.0;
+            let mul = (point.y & 255) as u8;
 
-        let c = Rgb888::new(
-            (b * c.r() as f32) as u8,
-            (b * c.g() as f32) as u8,
-            (b * c.b() as f32) as u8,
-        );
+            Rgb888::new(
+                // TODO: Proper colour blend
+                // (c.r() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                // (c.g() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                // (c.b() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                255 - mul,
+                255 - mul,
+                255 - mul,
+            )
+        };
 
-        println!("b {:+0.2} e {:+0.2}", b, e);
+        let aa_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum());
 
-        // let c = Rgb888::new(
-        //     ((b * c.r() as i32) / 255) as u8,
-        //     ((b * c.g() as i32) / 255) as u8,
-        //     ((b * c.b() as i32) / 255) as u8,
-        // );
+        Pixel(aa_p, aa_colour).draw(display)?;
 
-        Pixel(point, c).draw(display)?;
+        // Doesn't work: mathematical distance from ideal line using line_point_distance(). Not
+        // quite sure why but we don't get a smooth increase over the length of the line.
 
         if error > threshold {
-            println!("MINOR");
             point += step.minor;
             error += e_minor;
-            bright_int = 0.0;
-            accum = 0.0;
         }
 
         error += e_major;
         point += step.major;
-        bright_int += grad_step;
-        accum += gradient;
-        x += 1.0;
-        y += gradient;
     }
 
     Ok(())
@@ -450,7 +423,7 @@ fn parallel_line(
     }
 
     for _i in 0..(length + last_offset) {
-        Pixel(point, c).draw(display)?;
+        Pixel(Point::new(point.x, point.y >> 8), c).draw(display)?;
 
         if error > threshold {
             point += step.minor;
@@ -462,6 +435,37 @@ fn parallel_line(
     }
 
     Ok(())
+}
+
+/// Minimum distane between a line and a point.
+///
+/// From <https://paulbourke.net/geometry/pointlineplane/>
+fn line_point_distance(line: Line, point: Point) -> f32 {
+    let length = {
+        let Point { x, y } = line.delta();
+
+        f32::sqrt((x.pow(2) + y.pow(2)) as f32)
+    };
+
+    let x1 = line.start.x;
+    let x2 = line.end.x;
+    let x3 = point.x;
+
+    let y1 = line.start.y;
+    let y2 = line.end.y;
+    let y3 = point.y;
+
+    let u = ((x3 - x1) * (x2 - x1) + (y3 - y1) * (y2 - y1)) as f32 / length.powi(2);
+
+    let tx = x1 as f32 + u * (x2 - x1) as f32;
+    let ty = y1 as f32 + u * (y2 - y1) as f32;
+
+    // Tangent intersection point
+    let tangent = Point::new(tx as i32, ty as i32);
+
+    let Point { x, y } = Line::new(point, tangent).delta();
+
+    f32::sqrt((x.pow(2) + y.pow(2)) as f32)
 }
 
 struct LineDebug {
