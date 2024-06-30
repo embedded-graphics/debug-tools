@@ -1,8 +1,3 @@
-//! Testing perpendicular seed line for thick lines using the 256 mul trick as per
-//! <https://computergraphics.stackexchange.com/a/10675>.
-//!
-//! Copied from `line-no-aa-parallel.rs`.
-
 use embedded_graphics::{
     geometry::PointExt, mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
 };
@@ -23,7 +18,7 @@ impl<T> MajorMinor<T> {
 
 fn thickline(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
-    line: Line,
+    mut line: Line,
     width: i32,
 ) -> Result<(), std::convert::Infallible> {
     if width == 0 {
@@ -32,18 +27,16 @@ fn thickline(
 
     let non_mul_line = line;
 
-    let mut seed_line = line.perpendicular();
-
-    seed_line.start.x *= 256;
-    seed_line.end.x *= 256;
-
-    // line.start.y *= 256;
-    // line.end.y *= 256;
+    let seed_line = line.perpendicular();
 
     let mut point_left = seed_line.start;
     let mut point_right = seed_line.start;
 
+    line.start.y *= 256;
+    line.end.y *= 256;
+
     let seed_line_delta = seed_line.delta();
+
     let seed_line_direction = Point::new(
         if seed_line_delta.x >= 0 { 1 } else { -1 },
         if seed_line_delta.y >= 0 { 1 } else { -1 },
@@ -83,11 +76,7 @@ fn thickline(
     // TODO: The current extents() function needs to respect this too, as well as stroke offset
     let mut is_right = true;
 
-    println!("---");
-
-    // TODO
-    // while thickness_accumulator.pow(2) <= thickness_threshold {
-    for _ in 0..width {
+    while thickness_accumulator.pow(2) <= thickness_threshold {
         let (point, inc, c, seed_line_error) = if is_right {
             (
                 &mut point_right,
@@ -105,9 +94,7 @@ fn thickline(
             )
         };
 
-        dbg!(&point);
-
-        Pixel(dbg!(Point::new(point.x >> 8, point.y)), c).draw(display)?;
+        Pixel(Point::new(point.x, point.y), c).draw(display)?;
 
         if *seed_line_error > threshold {
             *point += inc.minor;
