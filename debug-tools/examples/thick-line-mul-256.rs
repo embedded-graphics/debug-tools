@@ -122,10 +122,10 @@ impl App for LineDebug {
             Self::DISPLAY_SIZE.height as i32 / 2,
         );
         Self {
-            start: end + Point::new(10, 15),
+            start: end - Point::new(80, 35),
             end,
             // end: start + Point::new(100, 0),
-            stroke_width: 10,
+            stroke_width: 20,
         }
     }
 
