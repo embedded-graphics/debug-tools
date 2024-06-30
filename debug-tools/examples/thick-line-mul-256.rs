@@ -30,8 +30,8 @@ fn thickline(
 
     // let mut seed_line = line.perpendicular();
     let mut seed_line = line;
-    seed_line.start.y *= 256;
-    seed_line.end.y *= 256;
+    seed_line.start *= 256;
+    seed_line.end *= 256;
 
     let seed_line_delta = seed_line.delta();
 
@@ -42,13 +42,15 @@ fn thickline(
 
     let y_major = non_mul_delta.y.abs() >= non_mul_delta.x.abs();
 
-    let (seed_line_delta, seed_line_step) = if y_major {
+    let (non_mul_majorminor, seed_line_delta, seed_line_step) = if y_major {
         (
+            MajorMinor::new(non_mul_delta.y, non_mul_delta.x),
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
             MajorMinor::new(seed_line_direction.y_axis(), seed_line_direction.x_axis()),
         )
     } else {
         (
+            MajorMinor::new(non_mul_delta.x, non_mul_delta.y),
             MajorMinor::new(seed_line_delta.x, seed_line_delta.y),
             MajorMinor::new(seed_line_direction.x_axis(), seed_line_direction.y_axis()),
         )
@@ -59,7 +61,10 @@ fn thickline(
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
 
-    // dbg!(y_major, seed_line_step.minor , dx, dy);
+    // Using non-multiplied line delta otherwise thickness threshold runs into overflow issues (I
+    // think? It ended up negative in testing)
+    let non_mul_dx = non_mul_majorminor.major.abs();
+    let non_mul_dy = non_mul_majorminor.minor.abs();
 
     let threshold = dx - 2 * dy;
     // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
@@ -68,13 +73,19 @@ fn thickline(
     let mut seed_line_error = 0;
 
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
-    let thickness_threshold = ((width - 1) * 2).pow(2) * seed_line.delta().length_squared();
+    let thickness_threshold = ((width - 1) * 2).pow(2) * non_mul_delta.length_squared();
     // Add the first line drawn to the thickness. If this is left at zero, an extra line will be
     // drawn as the lines are drawn before checking for thickness.
-    let mut thickness_accumulator = 2 * dx;
+    let mut thickness_accumulator = 2 * non_mul_dx;
 
-    // while thickness_accumulator.pow(2) <= thickness_threshold {
-    for _ in 0..20 {
+    // println!(
+    //     "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {}",
+    //     threshold, thickness_threshold, e_minor, e_major, dx, dy
+    // );
+
+    while thickness_accumulator.pow(2) <= thickness_threshold {
+        // println!("error {}", seed_line_error);
+
         let c = Rgb888::CSS_FOREST_GREEN;
 
         Pixel(Point::new(point.x, point.y), c).draw(display)?;
@@ -83,12 +94,12 @@ fn thickline(
         if seed_line_error > threshold {
             point += seed_line_step.minor;
             seed_line_error += e_minor;
-            thickness_accumulator += 2 * dy;
+            thickness_accumulator += 2 * non_mul_dy;
         }
 
         point += seed_line_step.major;
         seed_line_error += e_major;
-        thickness_accumulator += 2 * dx;
+        thickness_accumulator += 2 * non_mul_dx;
     }
 
     Ok(())
