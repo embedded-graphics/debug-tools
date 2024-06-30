@@ -158,7 +158,7 @@ fn thickline(
             (
                 &mut point_left,
                 seed_line_step,
-                Rgb888::CSS_ALICE_BLUE,
+                Rgb888::CSS_FOREST_GREEN,
                 &mut seed_line_error,
                 &mut parallel_error,
                 original_flip,
@@ -167,17 +167,17 @@ fn thickline(
 
         Pixel(Point::new(point.x, point.y), c).draw(display)?;
 
-        // parallel_line(
-        //     *point,
-        //     line,
-        //     parallel_step,
-        //     parallel_delta,
-        //     *parallel_error * flip,
-        //     c,
-        //     false,
-        //     last_offset,
-        //     display,
-        // )?;
+        parallel_line(
+            *point,
+            line,
+            parallel_step,
+            parallel_delta,
+            *parallel_error * flip,
+            c,
+            false,
+            last_offset,
+            display,
+        )?;
 
         if *seed_line_error > threshold {
             *point += inc.minor;
@@ -346,7 +346,7 @@ fn parallel_line_aa(
 
     for _i in 0..(length + last_offset) {
         // https://computergraphics.stackexchange.com/a/10675
-        let draw_p = Point::new(point.x, point.y >> 8);
+        let draw_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum());
 
         Pixel(draw_p, Rgb888::CYAN).draw(display)?;
 
@@ -366,7 +366,7 @@ fn parallel_line_aa(
             )
         };
 
-        let aa_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum());
+        let aa_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum() * 2);
 
         Pixel(aa_p, aa_colour).draw(display)?;
 
@@ -396,7 +396,7 @@ fn parallel_line(
     mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
-    let mut point = start;
+    let mut point = Point::new(start.x, start.y * 256);
 
     // Pixel(point, c).draw(display)?;
     // return Ok(());
