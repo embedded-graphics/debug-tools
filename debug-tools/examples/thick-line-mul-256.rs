@@ -91,6 +91,26 @@ fn thickline(
 
         Pixel(Point::new(point.x >> 8, point.y >> 8), c).draw(display)?;
 
+        {
+            let aa_colour = {
+                let mul = (point.y & 255) as u8;
+
+                Rgb888::new(
+                    // TODO: Proper colour blend
+                    // (c.r() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                    // (c.g() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                    // (c.b() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                    255 - mul,
+                    255 - mul,
+                    255 - mul,
+                )
+            };
+
+            let aa_p = Point::new(point.x >> 8, (point.y >> 8) - (line.delta().y).signum() * 2);
+
+            Pixel(aa_p, aa_colour).draw(display)?;
+        }
+
         // We seem to hit the threshold too early and end up with a 45 degree line everywhere.
         if seed_line_error > threshold {
             point += seed_line_step.minor * 256;
