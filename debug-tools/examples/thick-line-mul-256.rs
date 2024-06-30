@@ -26,8 +26,12 @@ fn thickline(
     }
 
     let non_mul_line = line;
+    let non_mul_delta = line.delta();
 
-    let seed_line = line.perpendicular();
+    // let mut seed_line = line.perpendicular();
+    let mut seed_line = line;
+    seed_line.start.y *= 256;
+    seed_line.end.y *= 256;
 
     let seed_line_delta = seed_line.delta();
 
@@ -36,7 +40,9 @@ fn thickline(
         if seed_line_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let (seed_line_delta, seed_line_step) = if seed_line_delta.y.abs() >= seed_line_delta.x.abs() {
+    let y_major = non_mul_delta.y.abs() >= non_mul_delta.x.abs();
+
+    let (seed_line_delta, seed_line_step) = if y_major {
         (
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
             MajorMinor::new(seed_line_direction.y_axis(), seed_line_direction.x_axis()),
@@ -67,7 +73,7 @@ fn thickline(
     while thickness_accumulator.pow(2) <= thickness_threshold {
         let c = Rgb888::CSS_FOREST_GREEN;
 
-        Pixel(Point::new(point.x, point.y), c).draw(display)?;
+        Pixel(Point::new(point.x, point.y >> 8), c).draw(display)?;
 
         if seed_line_error > threshold {
             point += seed_line_step.minor;
