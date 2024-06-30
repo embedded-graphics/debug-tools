@@ -29,11 +29,11 @@ fn thickline(
     let non_mul_delta = line.delta();
 
     // let mut seed_line = line.perpendicular();
-    let mut seed_line = line;
-    seed_line.start *= 256;
-    seed_line.end *= 256;
+    let mut line = line;
+    line.start *= 256;
+    line.end *= 256;
 
-    let seed_line_delta = seed_line.delta();
+    let seed_line_delta = line.delta();
 
     let seed_line_direction = Point::new(
         if seed_line_delta.x >= 0 { 1 } else { -1 },
@@ -56,7 +56,8 @@ fn thickline(
         )
     };
 
-    let mut point = non_mul_line.start;
+    // let mut point = non_mul_line.start;
+    let mut point = line.start;
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -78,26 +79,26 @@ fn thickline(
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * non_mul_dx;
 
-    // println!(
-    //     "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {}",
-    //     threshold, thickness_threshold, e_minor, e_major, dx, dy
-    // );
+    println!(
+        "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {}",
+        threshold, thickness_threshold, e_minor, e_major, dx, dy
+    );
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        // println!("error {}", seed_line_error);
+        println!("error {} point {}", seed_line_error, point);
 
         let c = Rgb888::CSS_FOREST_GREEN;
 
-        Pixel(Point::new(point.x, point.y), c).draw(display)?;
+        Pixel(Point::new(point.x >> 8, point.y >> 8), c).draw(display)?;
 
         // We seem to hit the threshold too early and end up with a 45 degree line everywhere.
         if seed_line_error > threshold {
-            point += seed_line_step.minor;
+            point += seed_line_step.minor * 256;
             seed_line_error += e_minor;
             thickness_accumulator += 2 * non_mul_dy;
         }
 
-        point += seed_line_step.major;
+        point += seed_line_step.major * 256;
         seed_line_error += e_major;
         thickness_accumulator += 2 * non_mul_dx;
     }
