@@ -54,27 +54,32 @@ fn thickline(
         )
     };
 
-    let mut point = seed_line.start;
+    let mut point = non_mul_line.start;
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
 
+    // dbg!(y_major, seed_line_step.minor , dx, dy);
+
     let threshold = dx - 2 * dy;
+    // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let mut seed_line_error = 0;
 
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
-    let thickness_threshold = ((width - 1) * 2).pow(2) * non_mul_line.delta().length_squared();
+    let thickness_threshold = ((width - 1) * 2).pow(2) * seed_line.delta().length_squared();
     // Add the first line drawn to the thickness. If this is left at zero, an extra line will be
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * dx;
 
-    while thickness_accumulator.pow(2) <= thickness_threshold {
+    // while thickness_accumulator.pow(2) <= thickness_threshold {
+    for _ in 0..20 {
         let c = Rgb888::CSS_FOREST_GREEN;
 
-        Pixel(Point::new(point.x, point.y >> 8), c).draw(display)?;
+        Pixel(Point::new(point.x, point.y), c).draw(display)?;
 
+        // We seem to hit the threshold too early and end up with a 45 degree line everywhere.
         if seed_line_error > threshold {
             point += seed_line_step.minor;
             seed_line_error += e_minor;
