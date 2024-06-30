@@ -25,23 +25,23 @@ fn thickline(
         return Ok(());
     }
 
-    let non_mul_line = line;
-    let non_mul_delta = line.delta();
+    let mut seed_line = line.perpendicular();
+    // let mut seed_line = line;
 
-    // let mut seed_line = line.perpendicular();
-    let mut line = line;
+    let non_mul_line = seed_line;
+    let non_mul_delta = seed_line.delta();
 
     let y_major = non_mul_delta.y.abs() >= non_mul_delta.x.abs();
 
     if y_major {
-        line.start.x *= 256;
-        line.end.x *= 256;
+        seed_line.start.x *= 256;
+        seed_line.end.x *= 256;
     } else {
-        line.start.y *= 256;
-        line.end.y *= 256;
+        seed_line.start.y *= 256;
+        seed_line.end.y *= 256;
     }
 
-    let seed_line_delta = line.delta();
+    let seed_line_delta = seed_line.delta();
 
     let seed_line_direction = Point::new(
         if seed_line_delta.x >= 0 { 1 } else { -1 },
@@ -74,7 +74,7 @@ fn thickline(
     };
 
     // let mut point = non_mul_line.start;
-    let mut point = line.start;
+    let mut point = seed_line.start;
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -136,14 +136,14 @@ fn thickline(
 
             let aa_p = Point::new(
                 if y_major {
-                    (point.x >> 8) - (line.delta().x).signum() * 2
+                    (point.x >> 8) - (seed_line.delta().x).signum() * 2
                 } else {
                     point.x
                 },
                 if y_major {
                     point.y
                 } else {
-                    (point.y >> 8) - (line.delta().y).signum() * 2
+                    (point.y >> 8) - (seed_line.delta().y).signum() * 2
                 },
             );
 
