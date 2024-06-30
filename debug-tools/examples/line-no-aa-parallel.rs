@@ -1,5 +1,9 @@
 use embedded_graphics::{
-    geometry::PointExt, mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
+    geometry::PointExt,
+    mock_display::MockDisplay,
+    pixelcolor::Rgb888,
+    prelude::*,
+    primitives::{Line, PrimitiveStyle},
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
@@ -353,9 +357,12 @@ fn parallel_line_aa(
     // Start at half brightness because we're "half way along" a Bresenham step
     let mut bright_int = 0.5;
 
-    let range = threshold - e_minor;
+    println!("--- dy/dx {gradient} T {threshold} Emin {e_minor} Emaj {e_major} G {gradient}");
 
-    println!("--- {range} {threshold} {e_minor} {e_major}");
+    let mut accum = 0.0f32;
+
+    let mut x = line.start.x as f32;
+    let mut y = line.start.y as f32;
 
     for _i in 0..(length + last_offset) {
         let b = if invert { bright_int } else { 1.0 - bright_int };
@@ -363,21 +370,18 @@ fn parallel_line_aa(
         let error2 = error.min(threshold) as f32 / threshold as f32;
         let error2 = (1.0 - error2) / 2.0;
 
-        println!(
-            "E {:+03} E2 {:0.3} B {:0.3} D {:0.3}",
-            error,
-            error2,
-            b,
-            f32::abs(error2 - b)
-        );
+        let e =
+            ((error as f32 / (2.0 * dx as f32)) / (threshold as f32 / (2.0 * dx as f32))).min(1.0);
 
-        let b = error2.abs().min(1.0);
+        let b = if e < 0.0 { 1.0 + e.abs() } else { 1.0 - e } / 2.0;
 
         let c = Rgb888::new(
             (b * c.r() as f32) as u8,
             (b * c.g() as f32) as u8,
             (b * c.b() as f32) as u8,
         );
+
+        println!("b {:+0.2} e {:+0.2}", b, e);
 
         // let c = Rgb888::new(
         //     ((b * c.r() as i32) / 255) as u8,
@@ -392,11 +396,15 @@ fn parallel_line_aa(
             point += step.minor;
             error += e_minor;
             bright_int = 0.0;
+            accum = 0.0;
         }
 
         error += e_major;
         point += step.major;
         bright_int += grad_step;
+        accum += gradient;
+        x += 1.0;
+        y += gradient;
     }
 
     Ok(())
@@ -520,8 +528,8 @@ impl App for LineDebug {
 
         // let l = Line::new(self.start, self.end);
 
-        // l.into_styled(PrimitiveStyle::with_stroke(Rgb888::GREEN, 1))
-        //     .draw(&mut display.translated(Point::new(40, 40)))?;
+        // l.into_styled(PrimitiveStyle::with_stroke(Rgb888::GREEN, width as u32))
+        //     .draw(display)?;
 
         // l.perpendicular()
         //     .into_styled(PrimitiveStyle::with_stroke(Rgb888::RED, 1))
