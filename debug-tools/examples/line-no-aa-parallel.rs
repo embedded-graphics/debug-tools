@@ -55,25 +55,27 @@ fn thickline(
     toggle2: bool,
     last_offset: i32,
 ) -> Result<(), std::convert::Infallible> {
-    line.start.y *= 256;
-    line.end.y *= 256;
-
     if width == 0 {
         return Ok(());
     }
 
+    let non_mul_line = line;
+
     let seed_line = line.perpendicular();
 
-    let parallel_delta = line.end - line.start;
+    let mut point_left = seed_line.start;
+    let mut point_right = seed_line.start;
+
+    line.start.y *= 256;
+    line.end.y *= 256;
+
+    let parallel_delta = line.delta();
     let parallel_step = Point::new(
         if parallel_delta.x >= 0 { 1 } else { -1 },
         if parallel_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let mut point_left = line.start;
-    let mut point_right = line.start;
-
-    let seed_line_delta = seed_line.end - seed_line.start;
+    let seed_line_delta = seed_line.delta();
 
     let seed_line_direction = Point::new(
         if seed_line_delta.x >= 0 { 1 } else { -1 },
@@ -128,7 +130,7 @@ fn thickline(
     };
 
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
-    let thickness_threshold = ((width - 1) * 2).pow(2) * line.delta().length_squared();
+    let thickness_threshold = ((width - 1) * 2).pow(2) * non_mul_line.delta().length_squared();
     // Add the first line drawn to the thickness. If this is left at zero, an extra line will be
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * dx;
@@ -156,14 +158,14 @@ fn thickline(
             (
                 &mut point_left,
                 seed_line_step,
-                Rgb888::CSS_SALMON,
+                Rgb888::CSS_ALICE_BLUE,
                 &mut seed_line_error,
                 &mut parallel_error,
                 original_flip,
             )
         };
 
-        // Pixel(*point, c).draw(display)?;
+        Pixel(Point::new(point.x, point.y), c).draw(display)?;
 
         // parallel_line(
         //     *point,
@@ -255,7 +257,7 @@ fn thickline(
             *parallel_error += e_major;
         }
 
-        *point += inc.major/* * 3*/;
+        *point += inc.major;
         *seed_line_error += e_major;
         thickness_accumulator += 2 * dx;
 
@@ -310,14 +312,14 @@ fn parallel_line_aa(
     mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
-    let mut point = start;
+    let mut point = Point::new(start.x, start.y * 256);
 
     // Pixel(point, c).draw(display)?;
     // return Ok(());
 
-    // https://computergraphics.stackexchange.com/a/10675
-    let step = MajorMinor::new(step.major, step.minor);
-    let delta = MajorMinor::new(delta.major, delta.minor);
+    // // https://computergraphics.stackexchange.com/a/10675
+    // let step = MajorMinor::new(step.major, step.minor);
+    // let delta = MajorMinor::new(delta.major, delta.minor);
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -399,6 +401,10 @@ fn parallel_line(
     // Pixel(point, c).draw(display)?;
     // return Ok(());
 
+    // https://computergraphics.stackexchange.com/a/10675
+    let step = MajorMinor::new(step.major, step.minor);
+    let delta = MajorMinor::new(delta.major, delta.minor);
+
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
 
@@ -423,7 +429,10 @@ fn parallel_line(
     }
 
     for _i in 0..(length + last_offset) {
-        Pixel(Point::new(point.x, point.y >> 8), c).draw(display)?;
+        // https://computergraphics.stackexchange.com/a/10675
+        let draw_p = Point::new(point.x, point.y >> 8);
+
+        Pixel(draw_p, c).draw(display)?;
 
         if error > threshold {
             point += step.minor;
