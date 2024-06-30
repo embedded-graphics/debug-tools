@@ -30,8 +30,8 @@ fn thickline(
 
     // let mut seed_line = line.perpendicular();
     let mut line = line;
-    line.start *= 256;
-    line.end *= 256;
+    line.start.y *= 256;
+    line.end.y *= 256;
 
     let seed_line_delta = line.delta();
 
@@ -79,9 +79,12 @@ fn thickline(
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * non_mul_dx;
 
+    // dy is multiplied by 256 so we don't get huge integer rounding errors
+    let slope = dy / dx;
+
     println!(
-        "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {}",
-        threshold, thickness_threshold, e_minor, e_major, dx, dy
+        "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {} slope {}",
+        threshold, thickness_threshold, e_minor, e_major, dx, dy, slope
     );
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
@@ -89,7 +92,7 @@ fn thickline(
 
         let c = Rgb888::CSS_FOREST_GREEN;
 
-        Pixel(Point::new(point.x >> 8, point.y >> 8), c).draw(display)?;
+        Pixel(Point::new(point.x, point.y >> 8), c).draw(display)?;
 
         {
             let aa_colour = {
@@ -106,19 +109,19 @@ fn thickline(
                 )
             };
 
-            let aa_p = Point::new(point.x >> 8, (point.y >> 8) - (line.delta().y).signum() * 2);
+            let aa_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum() * 2);
 
             Pixel(aa_p, aa_colour).draw(display)?;
         }
 
         // We seem to hit the threshold too early and end up with a 45 degree line everywhere.
         if seed_line_error > threshold {
-            point += seed_line_step.minor * 256;
+            point.y += slope;
             seed_line_error += e_minor;
             thickness_accumulator += 2 * non_mul_dy;
         }
 
-        point += seed_line_step.major * 256;
+        point += seed_line_step.major;
         seed_line_error += e_major;
         thickness_accumulator += 2 * non_mul_dx;
     }
