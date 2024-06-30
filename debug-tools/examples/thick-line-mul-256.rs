@@ -52,7 +52,12 @@ fn thickline(
         (
             MajorMinor::new(non_mul_delta.y, non_mul_delta.x),
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
-            MajorMinor::new(seed_line_direction.y_axis(), seed_line_direction.x_axis()),
+            // MajorMinor::new(seed_line_direction.y_axis(), seed_line_direction.x_axis()),
+            MajorMinor::new(
+                seed_line_direction.y_axis(),
+                Point::new((seed_line_delta.x / seed_line_delta.y).abs(), 0)
+                    .component_mul(seed_line_direction),
+            ),
         )
     }
     // X-major line (i.e. X delta is longer than Y)
@@ -91,24 +96,32 @@ fn thickline(
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * thickness_dx;
 
-    // // dy is multiplied by 256 so we don't get huge integer rounding errors
-    // let slope = dy / dx;
-
-    println!(
-        "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {} y major {}",
-        threshold, thickness_threshold, e_minor, e_major, dx, dy, y_major
-    );
+    // println!(
+    //     "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {} y major {}",
+    //     threshold, thickness_threshold, e_minor, e_major, dx, dy, y_major
+    // );
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        println!("error {} point {}", seed_line_error, point);
+        // println!("error {} point {}", seed_line_error, point);
 
         let c = Rgb888::CSS_FOREST_GREEN;
 
-        Pixel(Point::new(point.x, point.y >> 8), c).draw(display)?;
+        Pixel(
+            Point::new(
+                if y_major { point.x >> 8 } else { point.x },
+                if y_major { point.y } else { point.y >> 8 },
+            ),
+            c,
+        )
+        .draw(display)?;
 
         {
             let aa_colour = {
-                let mul = (point.y & 255) as u8;
+                let mul = (if y_major {
+                    point.x & 255
+                } else {
+                    point.y & 255
+                }) as u8;
 
                 Rgb888::new(
                     // TODO: Proper colour blend
@@ -121,7 +134,18 @@ fn thickline(
                 )
             };
 
-            let aa_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum() * 2);
+            let aa_p = Point::new(
+                if y_major {
+                    (point.x >> 8) - (line.delta().x).signum() * 2
+                } else {
+                    point.x
+                },
+                if y_major {
+                    point.y
+                } else {
+                    (point.y >> 8) - (line.delta().y).signum() * 2
+                },
+            );
 
             Pixel(aa_p, aa_colour).draw(display)?;
         }
