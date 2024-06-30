@@ -30,8 +30,16 @@ fn thickline(
 
     // let mut seed_line = line.perpendicular();
     let mut line = line;
-    line.start.y *= 256;
-    line.end.y *= 256;
+
+    let y_major = non_mul_delta.y.abs() >= non_mul_delta.x.abs();
+
+    if y_major {
+        line.start.x *= 256;
+        line.end.x *= 256;
+    } else {
+        line.start.y *= 256;
+        line.end.y *= 256;
+    }
 
     let seed_line_delta = line.delta();
 
@@ -40,19 +48,23 @@ fn thickline(
         if seed_line_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let y_major = non_mul_delta.y.abs() >= non_mul_delta.x.abs();
-
-    let (non_mul_majorminor, seed_line_delta, seed_line_step) = if y_major {
+    let (thickness_majorminor, seed_line_delta, seed_line_step) = if y_major {
         (
             MajorMinor::new(non_mul_delta.y, non_mul_delta.x),
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
             MajorMinor::new(seed_line_direction.y_axis(), seed_line_direction.x_axis()),
         )
-    } else {
+    }
+    // X-major line (i.e. X delta is longer than Y)
+    else {
         (
             MajorMinor::new(non_mul_delta.x, non_mul_delta.y),
             MajorMinor::new(seed_line_delta.x, seed_line_delta.y),
-            MajorMinor::new(seed_line_direction.x_axis(), seed_line_direction.y_axis()),
+            MajorMinor::new(
+                seed_line_direction.x_axis(),
+                Point::new(0, (seed_line_delta.y / seed_line_delta.x).abs())
+                    .component_mul(seed_line_direction),
+            ),
         )
     };
 
@@ -64,8 +76,8 @@ fn thickline(
 
     // Using non-multiplied line delta otherwise thickness threshold runs into overflow issues (I
     // think? It ended up negative in testing)
-    let non_mul_dx = non_mul_majorminor.major.abs();
-    let non_mul_dy = non_mul_majorminor.minor.abs();
+    let thickness_dx = thickness_majorminor.major.abs();
+    let thickness_dy = thickness_majorminor.minor.abs();
 
     let threshold = dx - 2 * dy;
     // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
@@ -77,14 +89,14 @@ fn thickline(
     let thickness_threshold = ((width - 1) * 2).pow(2) * non_mul_delta.length_squared();
     // Add the first line drawn to the thickness. If this is left at zero, an extra line will be
     // drawn as the lines are drawn before checking for thickness.
-    let mut thickness_accumulator = 2 * non_mul_dx;
+    let mut thickness_accumulator = 2 * thickness_dx;
 
-    // dy is multiplied by 256 so we don't get huge integer rounding errors
-    let slope = dy / dx;
+    // // dy is multiplied by 256 so we don't get huge integer rounding errors
+    // let slope = dy / dx;
 
     println!(
-        "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {} slope {}",
-        threshold, thickness_threshold, e_minor, e_major, dx, dy, slope
+        "thresh {} thick thresh {} e_minor {} e_major {} dx {} dy {} y major {}",
+        threshold, thickness_threshold, e_minor, e_major, dx, dy, y_major
     );
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
@@ -116,14 +128,14 @@ fn thickline(
 
         // We seem to hit the threshold too early and end up with a 45 degree line everywhere.
         if seed_line_error > threshold {
-            point.y += slope;
+            point += seed_line_step.minor;
             seed_line_error += e_minor;
-            thickness_accumulator += 2 * non_mul_dy;
+            thickness_accumulator += 2 * thickness_dy;
         }
 
         point += seed_line_step.major;
         seed_line_error += e_major;
-        thickness_accumulator += 2 * non_mul_dx;
+        thickness_accumulator += 2 * thickness_dx;
     }
 
     Ok(())
