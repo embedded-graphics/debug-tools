@@ -170,8 +170,6 @@ fn thickline(
     let mut seed_line_error = 0;
     let mut parallel_error_left = 0;
 
-    let mut parallel_error_scaled = 0;
-
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
     let thickness_threshold =
         ((width - 1) * 2).pow(2) * non_mul_perpendicular_delta.length_squared();
@@ -196,18 +194,8 @@ fn thickline(
         let c = Rgb888::CSS_FOREST_GREEN;
 
         let p = Point::new(
-            if seed_is_y_major {
-                // point.x >> 8
-                point.x
-            } else {
-                point.x
-            },
-            if seed_is_y_major {
-                point.y
-            } else {
-                // point.y >> 8
-                point.y
-            },
+            if seed_is_y_major { point.x } else { point.x },
+            if seed_is_y_major { point.y } else { point.y },
         );
 
         Pixel(p, c).draw(display)?;
@@ -217,7 +205,7 @@ fn thickline(
             non_mul_line,
             parallel_step,
             parallel_delta,
-            parallel_error_scaled,
+            parallel_error_left,
             Rgb888::CSS_AQUAMARINE,
             false,
             0,
@@ -238,11 +226,9 @@ fn thickline(
                 println!("---- Parallel minor step");
 
                 parallel_error_left += parallel_e_minor;
-                parallel_error_scaled += parallel_e_minor;
             }
 
             parallel_error_left += parallel_e_major;
-            parallel_error_scaled += parallel_e_major;
         }
 
         // Multiply by 2 to separate individual lines for dbugging reasons
