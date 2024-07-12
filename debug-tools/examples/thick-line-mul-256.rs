@@ -26,27 +26,28 @@ fn thickline(
     }
 
     let mut seed_line = line.perpendicular();
+    let deleteme = line.perpendicular().delta();
+
+    // Multiply minor direction by 256 so we get AA resolution in lower 8 bits. Not used for seed
+    // line directly, but is used to scale initial error for each parallel line.
+    // if seed_is_y_major {
+    seed_line.start.x *= 256;
+    seed_line.end.x *= 256;
+    // } else {
+    seed_line.start.y *= 256;
+    seed_line.end.y *= 256;
+    // }
 
     let non_mul_delta = seed_line.delta();
 
     let seed_is_y_major = non_mul_delta.y.abs() >= non_mul_delta.x.abs();
-
-    // Multiply minor direction by 256 so we get AA resolution in lower 8 bits. Not used for seed
-    // line directly, but is used to scale initial error for each parallel line.
-    if seed_is_y_major {
-        seed_line.start.x *= 256;
-        seed_line.end.x *= 256;
-    } else {
-        seed_line.start.y *= 256;
-        seed_line.end.y *= 256;
-    }
 
     let seed_line_delta = seed_line.delta();
 
     let seed_line_step = Point::new(
         if seed_line_delta.x >= 0 { 1 } else { -1 },
         if seed_line_delta.y >= 0 { 1 } else { -1 },
-    );
+    ) * 256;
 
     // ---
 
@@ -72,26 +73,27 @@ fn thickline(
 
     let (thickness_majorminor, seed_line_delta, seed_line_step) = if seed_is_y_major {
         (
-            MajorMinor::new(non_mul_delta.y, non_mul_delta.x),
+            MajorMinor::new(deleteme.y, deleteme.x),
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
-            // MajorMinor::new(seed_line_direction.y_axis(), seed_line_direction.x_axis()),
-            MajorMinor::new(
-                seed_line_step.y_axis(),
-                Point::new((seed_line_delta.x / seed_line_delta.y).abs(), 0)
-                    .component_mul(seed_line_step),
-            ),
+            MajorMinor::new(seed_line_step.y_axis(), seed_line_step.x_axis()),
+            // MajorMinor::new(
+            //     seed_line_step.y_axis(),
+            //     Point::new((seed_line_delta.x / seed_line_delta.y).abs(), 0)
+            //         .component_mul(seed_line_step),
+            // ),
         )
     }
     // X-major line (i.e. X delta is longer than Y)
     else {
         (
-            MajorMinor::new(non_mul_delta.x, non_mul_delta.y),
+            MajorMinor::new(deleteme.x, deleteme.y),
             MajorMinor::new(seed_line_delta.x, seed_line_delta.y),
-            MajorMinor::new(
-                seed_line_step.x_axis(),
-                Point::new(0, (seed_line_delta.y / seed_line_delta.x).abs())
-                    .component_mul(seed_line_step),
-            ),
+            MajorMinor::new(seed_line_step.x_axis(), seed_line_step.y_axis()),
+            // MajorMinor::new(
+            //     seed_line_step.x_axis(),
+            //     Point::new(0, (seed_line_delta.y / seed_line_delta.x).abs())
+            //         .component_mul(seed_line_step),
+            // ),
         )
     };
 
@@ -100,7 +102,7 @@ fn thickline(
             MajorMinor::new(parallel_delta.y, parallel_delta.x),
             // MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis()),
             MajorMinor::new(
-                parallel_step.y_axis(),
+                parallel_step.y_axis() * 256,
                 Point::new((parallel_delta.x / parallel_delta.y).abs(), 0)
                     .component_mul(parallel_step),
             ),
@@ -110,7 +112,7 @@ fn thickline(
             MajorMinor::new(parallel_delta.x, parallel_delta.y),
             // MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis()),
             MajorMinor::new(
-                parallel_step.x_axis(),
+                parallel_step.x_axis() * 256,
                 Point::new(0, (parallel_delta.y / parallel_delta.x).abs())
                     .component_mul(parallel_step),
             ),
@@ -137,7 +139,7 @@ fn thickline(
     let mut parallel_error_left = 0;
 
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
-    let thickness_threshold = ((width - 1) * 2).pow(2) * non_mul_delta.length_squared();
+    let thickness_threshold = ((width - 1) * 2).pow(2) * deleteme.length_squared();
     // Add the first line drawn to the thickness. If this is left at zero, an extra line will be
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * thickness_dx;
@@ -156,10 +158,10 @@ fn thickline(
             if seed_is_y_major {
                 point.x >> 8
             } else {
-                point.x
+                point.x >> 8
             },
             if seed_is_y_major {
-                point.y
+                point.y >> 8
             } else {
                 point.y >> 8
             },
@@ -185,7 +187,8 @@ fn thickline(
             seed_line_error += e_minor;
             thickness_accumulator += 2 * thickness_dy;
 
-            // FIXME: This has no effect on parallel lines
+            // Attempted fixes:
+            // - Threshold can be negative. .abs() doesn't fix the start error value
             if parallel_error_left > threshold {
                 parallel_error_left += e_minor;
             }
@@ -198,17 +201,17 @@ fn thickline(
         thickness_accumulator += 2 * thickness_dx;
     }
 
-    parallel_line(
-        point,
-        line,
-        parallel_step,
-        parallel_delta,
-        parallel_error_left,
-        Rgb888::CSS_SALMON,
-        false,
-        0,
-        display,
-    )?;
+    // parallel_line(
+    //     point,
+    //     line,
+    //     parallel_step,
+    //     parallel_delta,
+    //     parallel_error_left,
+    //     Rgb888::CSS_SALMON,
+    //     false,
+    //     0,
+    //     display,
+    // )?;
 
     Ok(())
 }
@@ -319,13 +322,7 @@ fn parallel_line(
     mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
-    let y_major = line.delta().y.abs() >= line.delta().x.abs();
-
-    let mut point = if y_major {
-        Point::new(start.x >> 8, start.y * 256)
-    } else {
-        Point::new(start.x * 256, start.y >> 8)
-    };
+    let mut point = start;
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -352,15 +349,7 @@ fn parallel_line(
 
     for _i in 0..(length + last_offset) {
         // https://computergraphics.stackexchange.com/a/10675
-        let draw_p = Point::new(
-            if !y_major { point.x >> 8 } else { point.x },
-            if !y_major { point.y } else { point.y >> 8 },
-            // Are the shifts on both axes because the seed line sets the perp axis to *256, and we
-            // then set the line axis to *256 along side it?
-            // point.x >> 8,
-            // point.x,
-            // (point.y >> 8) - (line.delta().y).signum() * 2,
-        );
+        let draw_p = Point::new(point.x >> 8, point.y >> 8);
 
         Pixel(draw_p, c).draw(display)?;
 
