@@ -218,12 +218,27 @@ fn thickline(
             seed_line_error += e_minor;
             thickness_accumulator += 2 * thickness_dy;
 
-            println!("---- Seed minor step");
+            // println!("---- Seed minor step");
 
             // Attempted fixes:
             // - Threshold can be negative. .abs() doesn't fix the start error value
             if parallel_error_left > parallel_threshold {
-                println!("---- Parallel minor step");
+                // println!("---- Parallel minor step");
+
+                // Add some spacing for debugging
+                point += seed_line_step.major * 2;
+
+                parallel_line(
+                    point,
+                    non_mul_line,
+                    parallel_step,
+                    parallel_delta,
+                    parallel_error_left + e_minor + e_major,
+                    Rgb888::CSS_SALMON,
+                    false,
+                    0,
+                    display,
+                )?;
 
                 parallel_error_left += parallel_e_minor;
             }
@@ -237,17 +252,19 @@ fn thickline(
         thickness_accumulator += 2 * thickness_dx;
     }
 
-    // parallel_line(
-    //     point,
-    //     non_mul_line,
-    //     parallel_step,
-    //     parallel_delta,
-    //     parallel_error_left,
-    //     Rgb888::CSS_SALMON,
-    //     false,
-    //     0,
-    //     display,
-    // )?;
+    // Final AA line
+    parallel_line_aa(
+        point,
+        non_mul_line,
+        parallel_step,
+        parallel_delta,
+        0,
+        Rgb888::CSS_GOLDENROD,
+        false,
+        false,
+        0,
+        display,
+    )?;
 
     Ok(())
 }
@@ -255,7 +272,7 @@ fn thickline(
 fn parallel_line_aa(
     start: Point,
     line: Line,
-    step: MajorMinor<Point>,
+    mut step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
     start_error: i32,
     c: Rgb888,
@@ -266,7 +283,52 @@ fn parallel_line_aa(
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
 
-    let y_major = line.delta().y >= line.delta().x;
+    let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
+
+    // Using a block to isolate mutability
+    let line = {
+        let mut line = line;
+
+        // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
+        if line_is_y_major {
+            line.start.x *= 256;
+            line.end.x *= 256;
+            point.x *= 256;
+        } else {
+            line.start.y *= 256;
+            line.end.y *= 256;
+            point.y *= 256;
+        }
+
+        line
+    };
+
+    let parallel_delta = line.delta();
+
+    let parallel_step = Point::new(
+        if parallel_delta.x >= 0 { 1 } else { -1 },
+        if parallel_delta.y >= 0 { 1 } else { -1 },
+    );
+
+    let (delta, step) = if line_is_y_major {
+        (
+            MajorMinor::new(parallel_delta.y, parallel_delta.x),
+            MajorMinor::new(
+                parallel_step.y_axis(),
+                Point::new((parallel_delta.x / parallel_delta.y).abs(), 0)
+                    .component_mul(parallel_step),
+            ),
+        )
+    } else {
+        (
+            MajorMinor::new(parallel_delta.x, parallel_delta.y),
+            MajorMinor::new(
+                parallel_step.x_axis(),
+                Point::new(0, (parallel_delta.y / parallel_delta.x).abs())
+                    .component_mul(parallel_step),
+            ),
+        )
+    };
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -292,14 +354,14 @@ fn parallel_line_aa(
     }
 
     for _i in 0..(length + last_offset) {
-        // https://computergraphics.stackexchange.com/a/10675
-        let draw_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum());
+        // // https://computergraphics.stackexchange.com/a/10675
+        // let draw_p = Point::new(point.x, (point.y >> 8) - (line.delta().y).signum());
 
-        Pixel(draw_p, Rgb888::CYAN).draw(display)?;
+        // Pixel(draw_p, c).draw(display)?;
 
         {
             let aa_colour = {
-                let mul = (if y_major {
+                let mul = (if line_is_y_major {
                     point.x & 255
                 } else {
                     point.y & 255
@@ -317,12 +379,12 @@ fn parallel_line_aa(
             };
 
             let aa_p = Point::new(
-                if y_major {
+                if line_is_y_major {
                     (point.x >> 8) - (line.delta().x).signum() * 2
                 } else {
                     point.x
                 },
-                if y_major {
+                if line_is_y_major {
                     point.y
                 } else {
                     (point.y >> 8) - (line.delta().y).signum() * 2
@@ -380,7 +442,7 @@ fn parallel_line(
     let mut length = dx + 1;
     let mut error = start_error;
 
-    dbg!(start_error, e_minor, e_major, threshold);
+    // dbg!(start_error, e_minor, e_major, threshold);
 
     if skip_first {
         // Some of the length was consumed by this initial skip iteration. If this is omitted, the
