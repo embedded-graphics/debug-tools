@@ -151,17 +151,17 @@ fn thickline(
     let parallel_e_major = 2 * parallel_dy;
     let parallel_threshold = parallel_dx - 2 * parallel_dy;
 
-    dbg!(
-        dx,
-        dy,
-        parallel_dx,
-        parallel_dy,
-        seed_is_y_major,
-        parallel_is_y_major,
-        parallel_e_minor,
-        parallel_e_major,
-        parallel_threshold
-    );
+    // dbg!(
+    //     dx,
+    //     dy,
+    //     parallel_dx,
+    //     parallel_dy,
+    //     seed_is_y_major,
+    //     parallel_is_y_major,
+    //     parallel_e_minor,
+    //     parallel_e_major,
+    //     parallel_threshold
+    // );
 
     let threshold = dx - 2 * dy;
     // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
@@ -182,7 +182,7 @@ fn thickline(
     //     threshold, thickness_threshold, e_minor, e_major, dx, dy, y_major
     // );
 
-    println!("\n=== start loop ===\n");
+    // println!("\n=== start loop ===\n");
 
     dbg!(seed_line_step, seed_line_delta, e_major, e_minor);
 
@@ -195,7 +195,7 @@ fn thickline(
     };
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        println!("--- Seed iter");
+        // println!("--- Seed iter");
 
         // println!("error {} point {}", seed_line_error, point);
 
