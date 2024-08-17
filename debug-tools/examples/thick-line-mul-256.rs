@@ -266,7 +266,7 @@ fn thickline(
         non_mul_line,
         parallel_step,
         parallel_delta,
-        0,
+        parallel_error_left * flip,
         Rgb888::CSS_GOLDENROD,
         false,
         false,
@@ -293,50 +293,50 @@ fn parallel_line_aa(
 
     let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
 
-    // Using a block to isolate mutability
-    let line = {
-        let mut line = line;
+    // // Using a block to isolate mutability
+    // let line = {
+    //     let mut line = line;
 
-        // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
-        if line_is_y_major {
-            line.start.x *= 256;
-            line.end.x *= 256;
-            point.x *= 256;
-        } else {
-            line.start.y *= 256;
-            line.end.y *= 256;
-            point.y *= 256;
-        }
+    //     // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
+    //     if line_is_y_major {
+    //         line.start.x *= 256;
+    //         line.end.x *= 256;
+    //         point.x *= 256;
+    //     } else {
+    //         line.start.y *= 256;
+    //         line.end.y *= 256;
+    //         point.y *= 256;
+    //     }
 
-        line
-    };
+    //     line
+    // };
 
-    let parallel_delta = line.delta();
+    // let parallel_delta = line.delta();
 
-    let parallel_step = Point::new(
-        if parallel_delta.x >= 0 { 1 } else { -1 },
-        if parallel_delta.y >= 0 { 1 } else { -1 },
-    );
+    // let parallel_step = Point::new(
+    //     if parallel_delta.x >= 0 { 1 } else { -1 },
+    //     if parallel_delta.y >= 0 { 1 } else { -1 },
+    // );
 
-    let (delta, step) = if line_is_y_major {
-        (
-            MajorMinor::new(parallel_delta.y, parallel_delta.x),
-            MajorMinor::new(
-                parallel_step.y_axis(),
-                Point::new((parallel_delta.x / parallel_delta.y).abs(), 0)
-                    .component_mul(parallel_step),
-            ),
-        )
-    } else {
-        (
-            MajorMinor::new(parallel_delta.x, parallel_delta.y),
-            MajorMinor::new(
-                parallel_step.x_axis(),
-                Point::new(0, (parallel_delta.y / parallel_delta.x).abs())
-                    .component_mul(parallel_step),
-            ),
-        )
-    };
+    // let (delta, step) = if line_is_y_major {
+    //     (
+    //         MajorMinor::new(parallel_delta.y, parallel_delta.x),
+    //         MajorMinor::new(
+    //             parallel_step.y_axis(),
+    //             Point::new((parallel_delta.x / parallel_delta.y).abs(), 0)
+    //                 .component_mul(parallel_step),
+    //         ),
+    //     )
+    // } else {
+    //     (
+    //         MajorMinor::new(parallel_delta.x, parallel_delta.y),
+    //         MajorMinor::new(
+    //             parallel_step.x_axis(),
+    //             Point::new(0, (parallel_delta.y / parallel_delta.x).abs())
+    //                 .component_mul(parallel_step),
+    //         ),
+    //     )
+    // };
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -370,34 +370,40 @@ fn parallel_line_aa(
         {
             let aa_colour = {
                 let mul = (if line_is_y_major {
-                    point.x & 255
+                    // point.x & 255
+                    point.x
                 } else {
-                    point.y & 255
+                    // point.y & 255
+                    point.y
                 }) as u8;
 
-                Rgb888::new(
-                    // TODO: Proper colour blend
-                    // (c.r() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
-                    // (c.g() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
-                    // (c.b() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
-                    255 - mul,
-                    255 - mul,
-                    255 - mul,
-                )
+                // Rgb888::new(
+                //     // TODO: Proper colour blend
+                //     // (c.r() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                //     // (c.g() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                //     // (c.b() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                //     255 - mul,
+                //     255 - mul,
+                //     255 - mul,
+                // )
+
+                c
             };
 
-            let aa_p = Point::new(
-                if line_is_y_major {
-                    (point.x >> 8) - (line.delta().x).signum() * 2
-                } else {
-                    point.x
-                },
-                if line_is_y_major {
-                    point.y
-                } else {
-                    (point.y >> 8) - (line.delta().y).signum() * 2
-                },
-            );
+            // let aa_p = Point::new(
+            //     if line_is_y_major {
+            //         (point.x >> 8) - (line.delta().x).signum() * 2
+            //     } else {
+            //         point.x
+            //     },
+            //     if line_is_y_major {
+            //         point.y
+            //     } else {
+            //         (point.y >> 8) - (line.delta().y).signum() * 2
+            //     },
+            // );
+
+            let aa_p = point;
 
             Pixel(aa_p, aa_colour).draw(display)?;
         }
