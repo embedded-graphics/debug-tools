@@ -186,6 +186,14 @@ fn thickline(
 
     dbg!(seed_line_step, seed_line_delta, e_major, e_minor);
 
+    // This fixes the phasing for parallel lines on the left side of the base line for the octants
+    // where the line perpendicular moves "away" from the line body.
+    let flip = if seed_line_step.minor == -parallel_step.major {
+        -1
+    } else {
+        1
+    };
+
     while thickness_accumulator.pow(2) <= thickness_threshold {
         println!("--- Seed iter");
 
@@ -205,7 +213,7 @@ fn thickline(
             non_mul_line,
             parallel_step,
             parallel_delta,
-            parallel_error_left,
+            parallel_error_left * flip,
             Rgb888::CSS_AQUAMARINE,
             false,
             0,
@@ -233,7 +241,7 @@ fn thickline(
                     non_mul_line,
                     parallel_step,
                     parallel_delta,
-                    parallel_error_left + e_minor + e_major,
+                    (parallel_error_left + e_minor + e_major) * flip,
                     Rgb888::CSS_SALMON,
                     false,
                     0,
