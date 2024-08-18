@@ -28,6 +28,7 @@ fn thickline(
     let non_mul_line = line;
     let non_mul_perpendicular_delta = line.perpendicular().delta();
     let seed_line = line.perpendicular();
+    let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
 
     let seed_is_y_major =
         non_mul_perpendicular_delta.y.abs() >= non_mul_perpendicular_delta.x.abs();
@@ -86,23 +87,25 @@ fn thickline(
 
     let parallel_is_y_major = line.delta().y.abs() >= line.delta().x.abs();
 
-    // // Using a block to isolate mutability
-    // let line = {
-    //     let mut line = line;
+    // Using a block to isolate mutability
+    let mul_line = {
+        let mut line = line;
 
-    //     // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
-    //     if parallel_is_y_major {
-    //         line.start.x *= 256;
-    //         line.end.x *= 256;
-    //     } else {
-    //         line.start.y *= 256;
-    //         line.end.y *= 256;
-    //     }
+        // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
+        if parallel_is_y_major {
+            line.start.x *= 256;
+            line.end.x *= 256;
+        } else {
+            line.start.y *= 256;
+            line.end.y *= 256;
+        }
 
-    //     line
-    // };
+        line
+    };
 
-    let parallel_delta = line.delta();
+    let mul_delta = mul_line.delta();
+
+    let parallel_delta = mul_line.delta();
 
     let parallel_step = Point::new(
         if parallel_delta.x >= 0 { 1 } else { -1 },
@@ -112,22 +115,20 @@ fn thickline(
     let (parallel_delta, parallel_step) = if parallel_is_y_major {
         (
             MajorMinor::new(parallel_delta.y, parallel_delta.x),
-            MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis()),
-            // MajorMinor::new(
-            //     parallel_step.y_axis(),
-            //     Point::new((parallel_delta.x / parallel_delta.y).abs(), 0)
-            //         .component_mul(parallel_step),
-            // ),
+            // MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis()),
+            MajorMinor::new(
+                parallel_step.y_axis(),
+                Point::new((mul_delta.x / mul_delta.y).abs(), 0).component_mul(parallel_step),
+            ),
         )
     } else {
         (
             MajorMinor::new(parallel_delta.x, parallel_delta.y),
-            MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis()),
-            // MajorMinor::new(
-            //     parallel_step.x_axis(),
-            //     Point::new(0, (parallel_delta.y / parallel_delta.x).abs())
-            //         .component_mul(parallel_step),
-            // ),
+            // MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis()),
+            MajorMinor::new(
+                parallel_step.x_axis(),
+                Point::new(0, (mul_delta.y / mul_delta.x).abs()).component_mul(parallel_step),
+            ),
         )
     };
 
@@ -147,9 +148,10 @@ fn thickline(
     // set the starting error correctly.
     let parallel_dx = parallel_delta.major.abs();
     let parallel_dy = parallel_delta.minor.abs();
+
+    let parallel_threshold = parallel_dx - 2 * parallel_dy;
     let parallel_e_minor = -2 * parallel_dx;
     let parallel_e_major = 2 * parallel_dy;
-    let parallel_threshold = parallel_dx - 2 * parallel_dy;
 
     // dbg!(
     //     dx,
@@ -237,18 +239,18 @@ fn thickline(
                 // Add some spacing for debugging
                 point += seed_line_step.major * 2;
 
-                // parallel_line_2(
-                //     point,
-                //     non_mul_line,
-                //     parallel_step,
-                //     parallel_delta,
-                //     (parallel_error_left + e_minor + e_major) * flip,
-                //     Rgb888::CSS_SALMON,
-                //     false,
-                //     false,
-                //     0,
-                //     display,
-                // )?;
+                parallel_line_2(
+                    point,
+                    non_mul_line,
+                    parallel_step,
+                    parallel_delta,
+                    (parallel_error_left + parallel_e_minor + parallel_e_major) * flip,
+                    Rgb888::CSS_SALMON,
+                    false,
+                    false,
+                    0,
+                    display,
+                )?;
 
                 parallel_error_left += parallel_e_minor;
             }
@@ -428,7 +430,7 @@ fn parallel_line_aa(
 fn parallel_line_2(
     start: Point,
     line: Line,
-    mut step: MajorMinor<Point>,
+    step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
     start_error: i32,
     c: Rgb888,
@@ -437,54 +439,63 @@ fn parallel_line_2(
     mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
-    let mut point = start;
-
     let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
 
-    // Using a block to isolate mutability
-    let line = {
-        let mut line = line;
+    let mut point = {
+        let mut point = start;
 
         // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
         if line_is_y_major {
-            line.start.x *= 256;
-            line.end.x *= 256;
             point.x *= 256;
         } else {
-            line.start.y *= 256;
-            line.end.y *= 256;
             point.y *= 256;
         }
 
-        line
+        point
     };
 
-    let parallel_delta = line.delta();
+    // // Using a block to isolate mutability
+    // let line = {
+    //     let mut line = line;
 
-    let parallel_step = Point::new(
-        if parallel_delta.x >= 0 { 1 } else { -1 },
-        if parallel_delta.y >= 0 { 1 } else { -1 },
-    );
+    //     // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
+    //     if line_is_y_major {
+    //         line.start.x *= 256;
+    //         line.end.x *= 256;
+    //         point.x *= 256;
+    //     } else {
+    //         line.start.y *= 256;
+    //         line.end.y *= 256;
+    //         point.y *= 256;
+    //     }
 
-    let (delta, step) = if line_is_y_major {
-        (
-            MajorMinor::new(parallel_delta.y, parallel_delta.x),
-            MajorMinor::new(
-                parallel_step.y_axis(),
-                Point::new((parallel_delta.x / parallel_delta.y).abs(), 0)
-                    .component_mul(parallel_step),
-            ),
-        )
-    } else {
-        (
-            MajorMinor::new(parallel_delta.x, parallel_delta.y),
-            MajorMinor::new(
-                parallel_step.x_axis(),
-                Point::new(0, (parallel_delta.y / parallel_delta.x).abs())
-                    .component_mul(parallel_step),
-            ),
-        )
-    };
+    //     line
+    // };
+
+    // let delta = line.delta();
+
+    // let step = Point::new(
+    //     if delta.x >= 0 { 1 } else { -1 },
+    //     if delta.y >= 0 { 1 } else { -1 },
+    // );
+
+    // let (delta, step) = if line_is_y_major {
+    //     (
+    //         MajorMinor::new(delta.y, delta.x),
+    //         MajorMinor::new(
+    //             step.y_axis(),
+    //             Point::new((delta.x / delta.y).abs(), 0).component_mul(step),
+    //         ),
+    //     )
+    // } else {
+    //     (
+    //         MajorMinor::new(delta.x, delta.y),
+    //         MajorMinor::new(
+    //             step.x_axis(),
+    //             Point::new(0, (delta.y / delta.x).abs()).component_mul(step),
+    //         ),
+    //     )
+    // };
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
