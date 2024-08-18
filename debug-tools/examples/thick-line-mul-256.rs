@@ -20,6 +20,7 @@ fn thickline(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
     line: Line,
     width: i32,
+    extra: bool,
 ) -> Result<(), std::convert::Infallible> {
     if width == 0 {
         return Ok(());
@@ -639,6 +640,7 @@ struct LineDebug {
     start: Point,
     end: Point,
     stroke_width: u32,
+    extra: bool,
 }
 
 impl App for LineDebug {
@@ -656,6 +658,7 @@ impl App for LineDebug {
             end,
             // end: start + Point::new(100, 0),
             stroke_width: 10,
+            extra: true,
         }
     }
 
@@ -664,6 +667,7 @@ impl App for LineDebug {
             Parameter::new("start", &mut self.start),
             Parameter::new("end", &mut self.end),
             Parameter::new("stroke", &mut self.stroke_width),
+            Parameter::new("extra", &mut self.extra),
         ]
     }
 
@@ -679,7 +683,7 @@ impl App for LineDebug {
 
         let _mock_display: MockDisplay<Rgb888> = MockDisplay::new();
 
-        thickline(display, Line::new(self.start, self.end), width)?;
+        thickline(display, Line::new(self.start, self.end), width, self.extra)?;
 
         // let l = Line::new(self.start, self.end);
 
