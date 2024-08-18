@@ -1,5 +1,9 @@
 use embedded_graphics::{
-    geometry::PointExt, mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
+    geometry::PointExt,
+    mock_display::MockDisplay,
+    pixelcolor::Rgb888,
+    prelude::*,
+    primitives::{Line, PrimitiveStyle},
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
@@ -24,6 +28,17 @@ fn thickline(
 ) -> Result<(), std::convert::Infallible> {
     if width == 0 {
         return Ok(());
+    }
+
+    // Draw line using existing algorithm to check against
+    {
+        let mut line = line;
+
+        line.start.y += width * 2;
+        line.end.y += width * 2;
+
+        line.into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
+            .draw(display)?;
     }
 
     let non_mul_line = line;
