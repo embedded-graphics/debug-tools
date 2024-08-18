@@ -135,6 +135,12 @@ fn thickline(
 
     // ---
 
+    let slope = if parallel_is_y_major {
+        mul_delta.x / mul_delta.y
+    } else {
+        mul_delta.y / mul_delta.x
+    };
+
     let mut point = seed_line.start;
 
     let dx = seed_line_delta.major.abs();
@@ -150,7 +156,7 @@ fn thickline(
     let parallel_dx = parallel_delta.major.abs();
     let parallel_dy = parallel_delta.minor.abs();
 
-    let parallel_threshold = parallel_dx - 2 * parallel_dy;
+    let parallel_threshold = (parallel_dx - 2 * parallel_dy).abs();
     let parallel_e_minor = -2 * parallel_dx;
     let parallel_e_major = 2 * parallel_dy;
 
@@ -191,11 +197,16 @@ fn thickline(
 
     // This fixes the phasing for parallel lines on the left side of the base line for the octants
     // where the line perpendicular moves "away" from the line body.
-    let flip = if seed_line_step.minor == -parallel_step.major {
-        -1
-    } else {
-        1
-    };
+    // let flip = if seed_line_step.minor == -parallel_step.major {
+    //     -1
+    // } else {
+    //     1
+    // };
+    let flip = 1;
+
+    println!("---");
+
+    dbg!(slope, parallel_e_major, parallel_e_minor);
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         // println!("--- Seed iter");
@@ -216,7 +227,7 @@ fn thickline(
             non_mul_line,
             parallel_step,
             parallel_delta,
-            parallel_error_left * flip,
+            if extra { parallel_error_left * flip } else { 0 },
             Rgb888::CSS_AQUAMARINE,
             false,
             false,
@@ -253,8 +264,12 @@ fn thickline(
                     display,
                 )?;
 
+                dbg!("Add minor");
+
                 parallel_error_left += parallel_e_minor;
             }
+
+            dbg!("Add major");
 
             parallel_error_left += parallel_e_major;
         }
@@ -265,19 +280,19 @@ fn thickline(
         thickness_accumulator += 2 * thickness_dx;
     }
 
-    // Final AA line
-    parallel_line_aa(
-        point,
-        non_mul_line,
-        parallel_step,
-        parallel_delta,
-        parallel_error_left * flip,
-        Rgb888::CSS_GOLDENROD,
-        false,
-        false,
-        0,
-        display,
-    )?;
+    // // Final AA line
+    // parallel_line_aa(
+    //     point,
+    //     non_mul_line,
+    //     parallel_step,
+    //     parallel_delta,
+    //     parallel_error_left * flip,
+    //     Rgb888::CSS_GOLDENROD,
+    //     false,
+    //     false,
+    //     0,
+    //     display,
+    // )?;
 
     Ok(())
 }
@@ -501,11 +516,13 @@ fn parallel_line_2(
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
 
-    let threshold = dx - 2 * dy;
+    let threshold = (dx - 2 * dy).abs();
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let mut length = dx + 1;
     let mut error = start_error;
+
+    dbg!(threshold, start_error);
 
     if skip_first {
         // Some of the length was consumed by this initial skip iteration. If this is omitted, the
