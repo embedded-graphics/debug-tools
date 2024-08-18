@@ -104,6 +104,8 @@ fn thickline(
         line
     };
 
+    let mut mul_point = mul_line.start;
+
     let mul_delta = mul_line.delta();
 
     let parallel_delta = mul_line.delta();
@@ -156,7 +158,7 @@ fn thickline(
     let parallel_dx = parallel_delta.major.abs();
     let parallel_dy = parallel_delta.minor.abs();
 
-    let parallel_threshold = (parallel_dx - 2 * parallel_dy).abs();
+    let parallel_threshold = parallel_dx - 2 * parallel_dy;
     let parallel_e_minor = -2 * parallel_dx;
     let parallel_e_major = 2 * parallel_dy;
 
@@ -223,11 +225,12 @@ fn thickline(
         Pixel(p, c).draw(display)?;
 
         parallel_line_2(
-            point,
+            mul_point,
             non_mul_line,
             parallel_step,
             parallel_delta,
-            if extra { parallel_error_left * flip } else { 0 },
+            // if extra { parallel_error_left * flip } else { 0 },
+            0,
             Rgb888::CSS_AQUAMARINE,
             false,
             false,
@@ -251,28 +254,33 @@ fn thickline(
                 // Add some spacing for debugging
                 point += seed_line_step.major * 2;
 
-                parallel_line_2(
-                    point,
-                    non_mul_line,
-                    parallel_step,
-                    parallel_delta,
-                    (parallel_error_left + parallel_e_minor + parallel_e_major) * flip,
-                    Rgb888::CSS_SALMON,
-                    false,
-                    false,
-                    0,
-                    display,
-                )?;
+                // parallel_line_2(
+                //     point,
+                //     non_mul_line,
+                //     parallel_step,
+                //     parallel_delta,
+                //     (parallel_error_left + parallel_e_minor + parallel_e_major) * flip,
+                //     Rgb888::CSS_SALMON,
+                //     false,
+                //     false,
+                //     0,
+                //     display,
+                // )?;
 
                 dbg!("Add minor");
 
                 parallel_error_left += parallel_e_minor;
+                mul_point += parallel_step.minor;
             }
 
             dbg!("Add major");
 
             parallel_error_left += parallel_e_major;
+            mul_point += parallel_step.major;
         }
+
+        mul_point += seed_line_step.major * 256;
+        mul_point += seed_line_step.major * 256;
 
         // Multiply by 2 to separate individual lines for dbugging reasons
         point += seed_line_step.major * 2;
@@ -457,18 +465,19 @@ fn parallel_line_2(
 ) -> Result<(), std::convert::Infallible> {
     let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
 
-    let mut point = {
-        let mut point = start;
+    let mut point = start;
+    // let mut point = {
+    //     let mut point = start;
 
-        // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
-        if line_is_y_major {
-            point.x *= 256;
-        } else {
-            point.y *= 256;
-        }
+    //     // Multiply minor direction by 256 so we get AA resolution in lower 8 bits
+    //     if line_is_y_major {
+    //         point.x *= 256;
+    //     } else {
+    //         point.y *= 256;
+    //     }
 
-        point
-    };
+    //     point
+    // };
 
     // // Using a block to isolate mutability
     // let line = {
@@ -516,7 +525,7 @@ fn parallel_line_2(
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
 
-    let threshold = (dx - 2 * dy).abs();
+    let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let mut length = dx + 1;
