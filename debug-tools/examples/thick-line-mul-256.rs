@@ -132,12 +132,9 @@ fn thickline(
         )
     };
 
-    dbg!(parallel_step);
-
     // ---
 
     let mut point = seed_line.start;
-    let mut parallel_point = non_mul_line.start;
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -149,8 +146,8 @@ fn thickline(
 
     // Start error must be scaled the same as the major/minor errors used in `parallel_line()` to
     // set the starting error correctly.
-    let parallel_dx = parallel_delta.major;
-    let parallel_dy = parallel_delta.minor;
+    let parallel_dx = parallel_delta.major.abs();
+    let parallel_dy = parallel_delta.minor.abs();
 
     let parallel_threshold = parallel_dx - 2 * parallel_dy;
     let parallel_e_minor = -2 * parallel_dx;
@@ -193,12 +190,11 @@ fn thickline(
 
     // This fixes the phasing for parallel lines on the left side of the base line for the octants
     // where the line perpendicular moves "away" from the line body.
-    // let flip = if seed_line_step.minor == -parallel_step.major {
-    //     -1
-    // } else {
-    //     1
-    // };
-    let flip = 1;
+    let flip = if seed_line_step.minor == -parallel_step.major {
+        -1
+    } else {
+        1
+    };
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         // println!("--- Seed iter");
@@ -215,7 +211,7 @@ fn thickline(
         Pixel(p, c).draw(display)?;
 
         parallel_line_2(
-            parallel_point,
+            point,
             non_mul_line,
             parallel_step,
             parallel_delta,
@@ -240,32 +236,27 @@ fn thickline(
             if parallel_error_left > parallel_threshold {
                 // println!("---- Parallel minor step");
 
-                // // Add some spacing for debugging
-                // point += seed_line_step.major * 2;
+                // Add some spacing for debugging
+                point += seed_line_step.major * 2;
 
-                // parallel_line_2(
-                //     point,
-                //     non_mul_line,
-                //     parallel_step,
-                //     parallel_delta,
-                //     (parallel_error_left + parallel_e_minor + parallel_e_major) * flip,
-                //     Rgb888::CSS_SALMON,
-                //     false,
-                //     false,
-                //     0,
-                //     display,
-                // )?;
+                parallel_line_2(
+                    point,
+                    non_mul_line,
+                    parallel_step,
+                    parallel_delta,
+                    (parallel_error_left + parallel_e_minor + parallel_e_major) * flip,
+                    Rgb888::CSS_SALMON,
+                    false,
+                    false,
+                    0,
+                    display,
+                )?;
 
                 parallel_error_left += parallel_e_minor;
-                parallel_point += seed_line_step.major;
             }
-
-            parallel_point += seed_line_step.minor;
 
             parallel_error_left += parallel_e_major;
         }
-
-        parallel_point += seed_line_step.major;
 
         // Multiply by 2 to separate individual lines for dbugging reasons
         point += seed_line_step.major * 2;
@@ -506,8 +497,8 @@ fn parallel_line_2(
     //     )
     // };
 
-    let dx = delta.major;
-    let dy = delta.minor;
+    let dx = delta.major.abs();
+    let dy = delta.minor.abs();
 
     let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
@@ -544,10 +535,6 @@ fn parallel_line_2(
                 point.y >> 8
             },
         );
-
-        if _i == 0 {
-            dbg!(line_is_y_major, aa_p, point);
-        }
 
         Pixel(aa_p, aa_colour).draw(display)?;
 
