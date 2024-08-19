@@ -118,12 +118,6 @@ fn thickline(
 
     // ---
 
-    let slope = if parallel_is_y_major {
-        mul_delta.x / mul_delta.y
-    } else {
-        mul_delta.y / mul_delta.x
-    };
-
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
 
@@ -184,8 +178,7 @@ fn thickline(
 
             if parallel_error_left > parallel_threshold {
                 parallel_error_left += parallel_e_minor;
-                // This gives correct phase offset
-                mul_point += seed_line_step.major * 256 * flip;
+                // mul_point += parallel_step.minor;
             }
 
             parallel_error_left += parallel_e_major;
