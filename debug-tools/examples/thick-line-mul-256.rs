@@ -118,6 +118,12 @@ fn thickline(
 
     // ---
 
+    let slope = if parallel_is_y_major {
+        mul_delta.x / mul_delta.y
+    } else {
+        mul_delta.y / mul_delta.x
+    };
+
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
 
@@ -178,7 +184,7 @@ fn thickline(
 
             if parallel_error_left > parallel_threshold {
                 parallel_error_left += parallel_e_minor;
-                // mul_point += parallel_step.minor;
+                mul_point += parallel_step.minor / slope;
             }
 
             parallel_error_left += parallel_e_major;
@@ -347,7 +353,7 @@ fn parallel_line_2(
 
         Pixel(aa_p, aa_colour).draw(display)?;
 
-        if error > threshold {
+        if error >= threshold {
             point += step.minor;
             error += e_minor;
         }
