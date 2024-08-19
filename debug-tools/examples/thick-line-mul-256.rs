@@ -202,6 +202,19 @@ fn thickline(
     Ok(())
 }
 
+/// Integer-only LERP with 8 bits of precision.
+///
+/// Thanks to <https://stackoverflow.com/a/34099335> for the inspiration.
+fn integer_lerp(a: u8, b: u8, f: u8) -> u8 {
+    let a = u16::from(a);
+    let b = u16::from(b);
+    let f = u16::from(f);
+
+    let res = (a * (u16::from(u8::MAX) - f) + b * f) >> 8;
+
+    res as u8
+}
+
 fn parallel_line_aa(
     start: Point,
     line: Line,
@@ -226,21 +239,20 @@ fn parallel_line_aa(
     let mut length = dx + 1;
     let mut error = 0;
 
+    let background = Rgb888::BLACK;
+
     for _i in 0..(length + last_offset) {
         let aa_colour = {
             let mul = (if line_is_y_major {
                 point.x & 255
-                // point.x
             } else {
                 point.y & 255
-                // point.y
             }) as u8;
 
             Rgb888::new(
-                // TODO: Proper colour blend
-                (c.r() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
-                (c.g() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
-                (c.b() as f32 * (1.0 - mul as f32 / 255.0)) as u8,
+                integer_lerp(c.r(), background.r(), mul),
+                integer_lerp(c.g(), background.g(), mul),
+                integer_lerp(c.b(), background.b(), mul),
             )
         };
 
