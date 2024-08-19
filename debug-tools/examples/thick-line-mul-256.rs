@@ -215,7 +215,6 @@ fn thickline(
         // Move seed line in minor direction
         if seed_line_error > 0 {
             seed_line_error += e_minor;
-            thickness_accumulator += 2 * thickness_dy;
 
             if parallel_error_left > 0 {
                 parallel_error_left += parallel_e_minor;
@@ -223,9 +222,7 @@ fn thickline(
                 mul_point += parallel_step_full.major * flip;
                 mul_point += parallel_step_full.minor * -flip;
 
-                // TODO: Check line limit here to see if we actually need to draw another line or
-                // not.
-                if extra {
+                if thickness_accumulator.pow(2) <= thickness_threshold && extra {
                     parallel_line_2(
                         mul_point,
                         non_mul_line,
@@ -241,6 +238,7 @@ fn thickline(
                 }
             }
 
+            thickness_accumulator += 2 * thickness_dy;
             parallel_error_left += parallel_e_major;
         }
 
