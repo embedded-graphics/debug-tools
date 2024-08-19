@@ -1,9 +1,5 @@
 use embedded_graphics::{
-    geometry::PointExt,
-    mock_display::MockDisplay,
-    pixelcolor::Rgb888,
-    prelude::*,
-    primitives::{Line, PrimitiveStyle},
+    geometry::PointExt, mock_display::MockDisplay, pixelcolor::Rgb888, prelude::*, primitives::Line,
 };
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window};
 use framework::prelude::*;
@@ -31,15 +27,15 @@ fn thickline(
     }
 
     // Draw line using existing algorithm to check against
-    {
-        let mut line = line;
+    // {
+    //     let mut line = line;
 
-        line.start.y += width * 2;
-        line.end.y += width * 2;
+    //     line.start.y += width * 2;
+    //     line.end.y += width * 2;
 
-        line.into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
-            .draw(display)?;
-    }
+    //     line.into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
+    //         .draw(display)?;
+    // }
 
     let non_mul_line = line;
     let non_mul_perpendicular_delta = line.perpendicular().delta();
@@ -55,7 +51,7 @@ fn thickline(
         if seed_line_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let (thickness_majorminor, seed_line_delta, seed_line_step) = if seed_is_y_major {
+    let (thickness_majorminor, seed_line_delta, mut seed_line_step) = if seed_is_y_major {
         (
             MajorMinor::new(non_mul_perpendicular_delta.y, non_mul_perpendicular_delta.x),
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
@@ -153,6 +149,16 @@ fn thickline(
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * thickness_dx;
 
+    // This fixes the phasing for parallel lines on the left side of the base line for the octants
+    // where the line perpendicular moves "away" from the line body.
+    let flip = if seed_line_step.minor == -parallel_step.major {
+        -1
+    } else {
+        1
+    };
+
+    dbg!(seed_line_step, parallel_step, flip);
+
     while thickness_accumulator.pow(2) <= thickness_threshold {
         parallel_line_2(
             mul_point,
@@ -172,32 +178,32 @@ fn thickline(
 
             if parallel_error_left > parallel_threshold {
                 parallel_error_left += parallel_e_minor;
-                mul_point += parallel_step.minor;
+                // mul_point += parallel_step.minor;
             }
 
             parallel_error_left += parallel_e_major;
             mul_point += parallel_step.major;
         }
 
-        mul_point += seed_line_step.major * 256;
+        mul_point += seed_line_step.major * 256 * flip;
         // Twice to add some debug space
-        // mul_point += seed_line_step.major * 256;
+        // mul_point += seed_line_step.major * 256 * flip;
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
     }
 
-    // Final AA line
-    parallel_line_aa(
-        mul_point,
-        non_mul_line,
-        parallel_step,
-        parallel_delta,
-        // Rgb888::CSS_GOLDENROD,
-        Rgb888::CSS_AQUAMARINE,
-        false,
-        0,
-        display,
-    )?;
+    // // Final AA line
+    // parallel_line_aa(
+    //     mul_point,
+    //     non_mul_line,
+    //     parallel_step,
+    //     parallel_delta,
+    //     // Rgb888::CSS_GOLDENROD,
+    //     Rgb888::CSS_AQUAMARINE,
+    //     false,
+    //     0,
+    //     display,
+    // )?;
 
     Ok(())
 }
