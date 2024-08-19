@@ -220,6 +220,7 @@ fn thickline(
                 parallel_error_left += parallel_e_minor;
 
                 mul_point += parallel_step_full.major * flip;
+                // This makes things align properly, but it skews the seed line
                 mul_point += parallel_step_full.minor * -flip;
 
                 if thickness_accumulator.pow(2) <= thickness_threshold && extra {
