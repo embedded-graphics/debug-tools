@@ -145,7 +145,7 @@ fn thickline(
     // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    let mut seed_line_error = 0;
+    let mut seed_line_error = 2 * dy - dx;
     let mut parallel_error_left = 2 * parallel_dy - parallel_dx;
     // let mut parallel_error_left = 0i32;
 
@@ -165,6 +165,8 @@ fn thickline(
     };
 
     let mut mul_point = mul_line.start;
+
+    let flip = 1;
 
     // dbg!(
     //     seed_line_step,
@@ -199,12 +201,13 @@ fn thickline(
             // } else {
             //     2 * parallel_dy - parallel_dx
             // },
-            parallel_error_left,
+            // parallel_error_left,
+            2 * parallel_dy - parallel_dx,
             Rgb888::CSS_AQUAMARINE,
             false,
             0,
             display,
-            extra,
+            false,
         )?;
 
         // Pixel(point, Rgb888::RED).draw(display)?;
@@ -216,12 +219,29 @@ fn thickline(
 
             if parallel_error_left > 0 {
                 parallel_error_left += parallel_e_minor;
+
+                mul_point += parallel_step_full.major * flip;
+                mul_point += parallel_step_full.minor * -flip;
+
+                // TODO: Check line limit here to see if we actually need to draw another line or
+                // not.
+                if extra {
+                    parallel_line_2(
+                        mul_point,
+                        non_mul_line,
+                        parallel_step,
+                        parallel_delta,
+                        2 * parallel_dy - parallel_dx,
+                        Rgb888::CSS_GOLDENROD,
+                        false,
+                        0,
+                        display,
+                        true,
+                    )?;
+                }
             }
 
             parallel_error_left += parallel_e_major;
-
-            mul_point += parallel_step_full.major * flip;
-            mul_point += parallel_step_full.minor * -flip;
         }
 
         seed_line_error += e_major;
@@ -230,18 +250,18 @@ fn thickline(
         mul_point += parallel_step_full.minor * -flip;
     }
 
-    // // Final AA line
-    // parallel_line_aa(
-    //     mul_point,
-    //     non_mul_line,
-    //     parallel_step,
-    //     parallel_delta,
-    //     // Rgb888::CSS_GOLDENROD,
-    //     Rgb888::CSS_AQUAMARINE,
-    //     false,
-    //     0,
-    //     display,
-    // )?;
+    // Final AA line
+    parallel_line_aa(
+        mul_point,
+        non_mul_line,
+        parallel_step,
+        parallel_delta,
+        // Rgb888::CSS_GOLDENROD,
+        Rgb888::CSS_AQUAMARINE,
+        false,
+        0,
+        display,
+    )?;
 
     Ok(())
 }
@@ -358,19 +378,19 @@ fn parallel_line_2(
 
     // dbg!(start_error, e_minor, e_major);
 
-    if skip_first {
-        // Some of the length was consumed by this initial skip iteration. If this is omitted, the
-        // line will be drawn 1px too long.
-        last_offset -= 1;
+    // if skip_first {
+    //     // Some of the length was consumed by this initial skip iteration. If this is omitted, the
+    //     // line will be drawn 1px too long.
+    //     last_offset -= 1;
 
-        if error > 0 {
-            point += step.minor;
-            error += e_minor;
-        }
+    //     if error > 0 {
+    //         point += step.minor;
+    //         error += e_minor;
+    //     }
 
-        error += e_major;
-        point += step.major;
-    }
+    //     error += e_major;
+    //     point += step.major;
+    // }
 
     for _i in 0..(length + last_offset) {
         let aa_colour = c;
@@ -389,6 +409,25 @@ fn parallel_line_2(
         );
 
         Pixel(aa_p, aa_colour).draw(display)?;
+
+        if extra {
+            let point = point + step.minor;
+
+            let aa_p = Point::new(
+                if line_is_y_major {
+                    point.x >> 8
+                } else {
+                    point.x
+                },
+                if line_is_y_major {
+                    point.y
+                } else {
+                    point.y >> 8
+                },
+            );
+
+            Pixel(aa_p, aa_colour).draw(display)?;
+        }
 
         if error > 0 {
             point += step.minor;
