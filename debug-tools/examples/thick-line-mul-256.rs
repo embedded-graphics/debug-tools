@@ -87,8 +87,6 @@ fn thickline(
         line
     };
 
-    let mut mul_point = mul_line.start;
-
     let mul_delta = mul_line.delta();
 
     let parallel_delta = mul_line.delta();
@@ -98,13 +96,14 @@ fn thickline(
         if parallel_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let (parallel_delta, parallel_step) = if parallel_is_y_major {
+    let (parallel_delta, parallel_step, parallel_step_full) = if parallel_is_y_major {
         (
             MajorMinor::new(parallel_delta.y, parallel_delta.x),
             MajorMinor::new(
                 parallel_step.y_axis(),
                 Point::new((mul_delta.x / mul_delta.y).abs(), 0).component_mul(parallel_step),
             ),
+            MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis() * 256),
         )
     } else {
         (
@@ -113,6 +112,7 @@ fn thickline(
                 parallel_step.x_axis(),
                 Point::new(0, (mul_delta.y / mul_delta.x).abs()).component_mul(parallel_step),
             ),
+            MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis() * 256),
         )
     };
 
@@ -137,16 +137,17 @@ fn thickline(
     let parallel_dx = parallel_delta.major.abs();
     let parallel_dy = parallel_delta.minor.abs();
 
-    let parallel_threshold = parallel_dx - 2 * parallel_dy;
+    let parallel_threshold = 2 * parallel_dy - parallel_dx;
     let parallel_e_minor = -2 * parallel_dx;
     let parallel_e_major = 2 * parallel_dy;
 
-    let threshold = dx - 2 * dy;
+    // let threshold = dx - 2 * dy;
     // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let mut seed_line_error = 0;
-    let mut parallel_error_left = 0;
+    let mut parallel_error_left = 2 * parallel_dy - parallel_dx;
+    // let mut parallel_error_left = 0i32;
 
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
     let thickness_threshold =
@@ -163,7 +164,27 @@ fn thickline(
         1
     };
 
-    dbg!(seed_line_step, parallel_step, flip);
+    let mut mul_point = mul_line.start;
+
+    // dbg!(
+    //     seed_line_step,
+    //     parallel_step,
+    //     parallel_e_major,
+    //     parallel_e_minor,
+    //     flip
+    // );
+
+    dbg!(
+        seed_line_step,
+        parallel_step,
+        parallel_step_full,
+        parallel_e_major,
+        parallel_e_minor,
+        flip,
+        parallel_threshold
+    );
+
+    let mut offset = 0;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         parallel_line_2(
@@ -171,31 +192,41 @@ fn thickline(
             non_mul_line,
             parallel_step,
             parallel_delta,
+            // if extra { parallel_error_left } else { 0 },
+            // 2 * parallel_dy - parallel_dx,
+            // if extra {
+            //     parallel_error_left
+            // } else {
+            //     2 * parallel_dy - parallel_dx
+            // },
+            2 * parallel_dy - parallel_dx,
             Rgb888::CSS_AQUAMARINE,
             false,
             0,
             display,
+            extra,
         )?;
 
+        // Pixel(point, Rgb888::RED).draw(display)?;
+
         // Move seed line in minor direction
-        if seed_line_error > threshold {
+        if seed_line_error > 0 {
             seed_line_error += e_minor;
             thickness_accumulator += 2 * thickness_dy;
 
-            if parallel_error_left > parallel_threshold {
+            if parallel_error_left > 0 {
                 parallel_error_left += parallel_e_minor;
-                mul_point += parallel_step.minor / slope;
             }
 
             parallel_error_left += parallel_e_major;
-            mul_point += parallel_step.major;
+
+            mul_point += parallel_step_full.major * flip;
         }
 
-        mul_point += seed_line_step.major * 256 * flip;
-        // Twice to add some debug space
-        // mul_point += seed_line_step.major * 256 * flip;
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
+
+        mul_point += parallel_step_full.minor * 2 * -flip;
     }
 
     // // Final AA line
@@ -302,10 +333,12 @@ fn parallel_line_2(
     line: Line,
     step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
+    start_error: i32,
     c: Rgb888,
     skip_first: bool,
     mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
+    extra: bool,
 ) -> Result<(), std::convert::Infallible> {
     let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
 
@@ -314,19 +347,22 @@ fn parallel_line_2(
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
 
-    let threshold = dx - 2 * dy;
+    // let threshold = 2 * dy - dx;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     // TODO: Might need skip_first/last offset
     let mut length = dx + 1;
-    let mut error = 0;
+    // let mut error = if extra { 2 * dy - dx } else { start_error };
+    let mut error = start_error;
+
+    dbg!(start_error, e_minor, e_major);
 
     if skip_first {
         // Some of the length was consumed by this initial skip iteration. If this is omitted, the
         // line will be drawn 1px too long.
         last_offset -= 1;
 
-        if error > threshold {
+        if error > 0 {
             point += step.minor;
             error += e_minor;
         }
@@ -353,7 +389,7 @@ fn parallel_line_2(
 
         Pixel(aa_p, aa_colour).draw(display)?;
 
-        if error >= threshold {
+        if error > 0 {
             point += step.minor;
             error += e_minor;
         }
