@@ -189,27 +189,6 @@ fn thickline(
     let mut offset = 0;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        parallel_line_2(
-            mul_point,
-            non_mul_line,
-            parallel_step,
-            parallel_delta,
-            // if extra { parallel_error_left } else { 0 },
-            // 2 * parallel_dy - parallel_dx,
-            // if extra {
-            //     parallel_error_left
-            // } else {
-            //     2 * parallel_dy - parallel_dx
-            // },
-            // parallel_error_left,
-            2 * parallel_dy - parallel_dx,
-            Rgb888::CSS_AQUAMARINE,
-            false,
-            0,
-            display,
-            false,
-        )?;
-
         // Pixel(point, Rgb888::RED).draw(display)?;
 
         // Move seed line in minor direction
@@ -220,17 +199,18 @@ fn thickline(
                 parallel_error_left += parallel_e_minor;
 
                 mul_point += parallel_step_full.major * flip;
-                // This makes things align properly, but it skews the seed line
-                mul_point += parallel_step_full.minor * -flip;
+                // This makes things align properly, but it skews the seed line. This also makes
+                // full gaps which require an extra line to be drawn (below).
+                // mul_point += parallel_step_full.minor * -flip;
 
-                if thickness_accumulator.pow(2) <= thickness_threshold && extra {
+                if extra {
                     parallel_line_2(
                         mul_point,
                         non_mul_line,
                         parallel_step,
                         parallel_delta,
                         2 * parallel_dy - parallel_dx,
-                        Rgb888::CSS_GOLDENROD,
+                        Rgb888::CSS_AQUAMARINE,
                         false,
                         0,
                         display,
@@ -241,6 +221,21 @@ fn thickline(
 
             thickness_accumulator += 2 * thickness_dy;
             parallel_error_left += parallel_e_major;
+        } else {
+            parallel_line_2(
+                mul_point,
+                non_mul_line,
+                parallel_step,
+                parallel_delta,
+                // Required instead of zero otherwise the starting pixels of the line before the first
+                // minor step are too long
+                2 * parallel_dy - parallel_dx,
+                Rgb888::CSS_AQUAMARINE,
+                false,
+                0,
+                display,
+                false,
+            )?;
         }
 
         seed_line_error += e_major;
@@ -255,6 +250,7 @@ fn thickline(
         non_mul_line,
         parallel_step,
         parallel_delta,
+        2 * parallel_dy - parallel_dx,
         // Rgb888::CSS_GOLDENROD,
         Rgb888::CSS_AQUAMARINE,
         false,
@@ -283,6 +279,7 @@ fn parallel_line_aa(
     line: Line,
     step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
+    start_error: i32,
     c: Rgb888,
     skip_first: bool,
     mut last_offset: i32,
@@ -300,7 +297,7 @@ fn parallel_line_aa(
     let e_major = 2 * dy;
     // TODO: Skip first/last offset
     let mut length = dx + 1;
-    let mut error = 0;
+    let mut error = start_error;
 
     let background = Rgb888::BLACK;
 
