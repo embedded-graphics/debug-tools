@@ -122,8 +122,6 @@ fn thickline(
 
     // ---
 
-    let mut point = seed_line.start;
-
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
 
@@ -156,15 +154,6 @@ fn thickline(
     let mut thickness_accumulator = 2 * thickness_dx;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        // let c = Rgb888::CSS_FOREST_GREEN;
-
-        // let p = Point::new(
-        //     if seed_is_y_major { point.x } else { point.x },
-        //     if seed_is_y_major { point.y } else { point.y },
-        // );
-
-        // Pixel(p, c).draw(display)?;
-
         parallel_line_2(
             mul_point,
             non_mul_line,
@@ -178,15 +167,10 @@ fn thickline(
 
         // Move seed line in minor direction
         if seed_line_error > threshold {
-            point += seed_line_step.minor;
             seed_line_error += e_minor;
             thickness_accumulator += 2 * thickness_dy;
 
             if parallel_error_left > parallel_threshold {
-                point += seed_line_step.major;
-                // Add some spacing for debugging
-                point += seed_line_step.major;
-
                 parallel_error_left += parallel_e_minor;
                 mul_point += parallel_step.minor;
             }
@@ -198,9 +182,6 @@ fn thickline(
         mul_point += seed_line_step.major * 256;
         // Twice to add some debug space
         // mul_point += seed_line_step.major * 256;
-
-        // Multiply by 2 to separate individual lines for dbugging reasons
-        point += seed_line_step.major * 2;
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
     }
