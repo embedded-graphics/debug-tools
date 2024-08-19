@@ -174,15 +174,15 @@ fn thickline(
     //     flip
     // );
 
-    dbg!(
-        seed_line_step,
-        parallel_step,
-        parallel_step_full,
-        parallel_e_major,
-        parallel_e_minor,
-        flip,
-        parallel_threshold
-    );
+    // dbg!(
+    //     seed_line_step,
+    //     parallel_step,
+    //     parallel_step_full,
+    //     parallel_e_major,
+    //     parallel_e_minor,
+    //     flip,
+    //     parallel_threshold
+    // );
 
     let mut offset = 0;
 
@@ -199,7 +199,7 @@ fn thickline(
             // } else {
             //     2 * parallel_dy - parallel_dx
             // },
-            2 * parallel_dy - parallel_dx,
+            parallel_error_left,
             Rgb888::CSS_AQUAMARINE,
             false,
             0,
@@ -221,12 +221,13 @@ fn thickline(
             parallel_error_left += parallel_e_major;
 
             mul_point += parallel_step_full.major * flip;
+            mul_point += parallel_step_full.minor * -flip;
         }
 
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
 
-        mul_point += parallel_step_full.minor * 2 * -flip;
+        mul_point += parallel_step_full.minor * -flip;
     }
 
     // // Final AA line
@@ -355,7 +356,7 @@ fn parallel_line_2(
     // let mut error = if extra { 2 * dy - dx } else { start_error };
     let mut error = start_error;
 
-    dbg!(start_error, e_minor, e_major);
+    // dbg!(start_error, e_minor, e_major);
 
     if skip_first {
         // Some of the length was consumed by this initial skip iteration. If this is omitted, the
