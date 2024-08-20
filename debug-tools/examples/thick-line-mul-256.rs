@@ -51,7 +51,7 @@ fn thickline(
         if seed_line_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let (thickness_majorminor, seed_line_delta, mut seed_line_step) = if seed_is_y_major {
+    let (thickness_majorminor, seed_line_delta, seed_line_step) = if seed_is_y_major {
         (
             MajorMinor::new(non_mul_perpendicular_delta.y, non_mul_perpendicular_delta.x),
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
@@ -118,11 +118,11 @@ fn thickline(
 
     // ---
 
-    let slope = if parallel_is_y_major {
-        mul_delta.x / mul_delta.y
-    } else {
-        mul_delta.y / mul_delta.x
-    };
+    // let slope = if parallel_is_y_major {
+    //     mul_delta.x / mul_delta.y
+    // } else {
+    //     mul_delta.y / mul_delta.x
+    // };
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -137,7 +137,7 @@ fn thickline(
     let parallel_dx = parallel_delta.major.abs();
     let parallel_dy = parallel_delta.minor.abs();
 
-    let parallel_threshold = 2 * parallel_dy - parallel_dx;
+    // let parallel_threshold = 2 * parallel_dy - parallel_dx;
     let parallel_e_minor = -2 * parallel_dx;
     let parallel_e_major = 2 * parallel_dy;
 
@@ -166,28 +166,6 @@ fn thickline(
 
     let mut mul_point = mul_line.start;
 
-    let flip = 1;
-
-    // dbg!(
-    //     seed_line_step,
-    //     parallel_step,
-    //     parallel_e_major,
-    //     parallel_e_minor,
-    //     flip
-    // );
-
-    // dbg!(
-    //     seed_line_step,
-    //     parallel_step,
-    //     parallel_step_full,
-    //     parallel_e_major,
-    //     parallel_e_minor,
-    //     flip,
-    //     parallel_threshold
-    // );
-
-    let mut offset = 0;
-
     while thickness_accumulator.pow(2) <= thickness_threshold {
         // Pixel(point, Rgb888::RED).draw(display)?;
 
@@ -198,10 +176,7 @@ fn thickline(
             if parallel_error_left > 0 {
                 parallel_error_left += parallel_e_minor;
 
-                mul_point += parallel_step_full.major * flip;
-                // This makes things align properly, but it skews the seed line. This also makes
-                // full gaps which require an extra line to be drawn (below).
-                // mul_point += parallel_step_full.minor * -flip;
+                mul_point += parallel_step_full.major;
 
                 if extra {
                     parallel_line_2(
@@ -241,7 +216,7 @@ fn thickline(
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
 
-        mul_point += parallel_step_full.minor * -flip;
+        mul_point += parallel_step_full.minor * -1;
     }
 
     // Final AA line
@@ -329,8 +304,6 @@ fn parallel_line_aa(
             },
         );
 
-        // let aa_p = point;
-
         Pixel(aa_p, aa_colour).draw(display)?;
 
         if error > threshold {
@@ -369,10 +342,7 @@ fn parallel_line_2(
     let e_major = 2 * dy;
     // TODO: Might need skip_first/last offset
     let mut length = dx + 1;
-    // let mut error = if extra { 2 * dy - dx } else { start_error };
     let mut error = start_error;
-
-    // dbg!(start_error, e_minor, e_major);
 
     // if skip_first {
     //     // Some of the length was consumed by this initial skip iteration. If this is omitted, the
@@ -389,9 +359,7 @@ fn parallel_line_2(
     // }
 
     for _i in 0..(length + last_offset) {
-        let aa_colour = c;
-
-        let aa_p = Point::new(
+        let p = Point::new(
             if line_is_y_major {
                 point.x >> 8
             } else {
@@ -404,25 +372,20 @@ fn parallel_line_2(
             },
         );
 
-        Pixel(aa_p, aa_colour).draw(display)?;
+        Pixel(p, c).draw(display)?;
 
+        // Draws a pixel connecting a diagonal move into a solid stairstep-looking piece. This is
+        // required for the additional diagonal move lines that are drawn when stepping in both the
+        // major and minor directions in the seed line.
         if extra {
-            let point = point + step.minor;
+            let p = point + step.minor;
 
-            let aa_p = Point::new(
-                if line_is_y_major {
-                    point.x >> 8
-                } else {
-                    point.x
-                },
-                if line_is_y_major {
-                    point.y
-                } else {
-                    point.y >> 8
-                },
+            let p = Point::new(
+                if line_is_y_major { p.x >> 8 } else { p.x },
+                if line_is_y_major { p.y } else { p.y >> 8 },
             );
 
-            Pixel(aa_p, aa_colour).draw(display)?;
+            Pixel(p, c).draw(display)?;
         }
 
         if error > 0 {
@@ -430,8 +393,8 @@ fn parallel_line_2(
             error += e_minor;
         }
 
-        error += e_major;
         point += step.major;
+        error += e_major;
     }
 
     Ok(())
