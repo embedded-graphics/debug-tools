@@ -94,7 +94,7 @@ fn thickline(
 
     let (parallel_delta, parallel_step, parallel_step_full) = if parallel_is_y_major {
         (
-            MajorMinor::new(parallel_delta.y, parallel_delta.x),
+            MajorMinor::new(parallel_delta.y.abs(), parallel_delta.x.abs()),
             MajorMinor::new(
                 parallel_step.y_axis(),
                 Point::new((mul_delta.x / mul_delta.y).abs(), 0).component_mul(parallel_step),
@@ -103,7 +103,7 @@ fn thickline(
         )
     } else {
         (
-            MajorMinor::new(parallel_delta.x, parallel_delta.y),
+            MajorMinor::new(parallel_delta.x.abs(), parallel_delta.y.abs()),
             MajorMinor::new(
                 parallel_step.x_axis(),
                 Point::new(0, (mul_delta.y / mul_delta.x).abs()).component_mul(parallel_step),
@@ -230,8 +230,8 @@ fn parallel_line_aa(
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
 
-    let dx = delta.major.abs();
-    let dy = delta.minor.abs();
+    let dx = delta.major;
+    let dy = delta.minor;
 
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
@@ -299,8 +299,8 @@ fn parallel_line_2(
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
 
-    let dx = delta.major.abs();
-    let dy = delta.minor.abs();
+    let dx = delta.major;
+    let dy = delta.minor;
 
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
