@@ -203,19 +203,17 @@ fn thickline(
         display,
     )?;
 
-    if extra {
-        // First AA line
-        parallel_line_aa(
-            mul_line.start + parallel_step_full.minor,
-            parallel_is_y_major,
-            parallel_step,
-            parallel_delta,
-            // Rgb888::CSS_GOLDENROD,
-            Rgb888::CSS_AQUAMARINE,
-            !swap_aa_direction,
-            display,
-        )?;
-    }
+    // First AA line
+    parallel_line_aa(
+        mul_line.start + parallel_step_full.minor,
+        parallel_is_y_major,
+        parallel_step,
+        parallel_delta,
+        // Rgb888::CSS_GOLDENROD,
+        Rgb888::CSS_AQUAMARINE,
+        !swap_aa_direction,
+        display,
+    )?;
 
     Ok(())
 }
