@@ -156,13 +156,15 @@ fn thickline(
     // drawn as the lines are drawn before checking for thickness.
     let mut thickness_accumulator = 2 * thickness_dx;
 
-    // This fixes the phasing for parallel lines on the left side of the base line for the octants
-    // where the line perpendicular moves "away" from the line body.
-    let flip = if seed_line_step.minor == -parallel_step.major {
-        -1
-    } else {
-        1
-    };
+    // // This fixes the phasing for parallel lines on the left side of the base line for the octants
+    // // where the line perpendicular moves "away" from the line body.
+    // let flip = if seed_line_step.minor == -parallel_step.major {
+    //     -1
+    // } else {
+    //     1
+    // };
+
+    let swap_aa_direction = parallel_step.minor.x < 0 || parallel_step.minor.y < 0;
 
     let mut mul_point = mul_line.start;
 
@@ -230,6 +232,7 @@ fn thickline(
         Rgb888::CSS_AQUAMARINE,
         false,
         0,
+        swap_aa_direction,
         display,
     )?;
 
@@ -258,6 +261,7 @@ fn parallel_line_aa(
     c: Rgb888,
     skip_first: bool,
     mut last_offset: i32,
+    swap_aa_direction: bool,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
@@ -283,6 +287,9 @@ fn parallel_line_aa(
             } else {
                 point.y & 255
             }) as u8;
+
+            // Some octants need the AA direction to go the other way
+            let mul = if swap_aa_direction { 255 - mul } else { mul };
 
             Rgb888::new(
                 integer_lerp(c.r(), background.r(), mul),
