@@ -27,14 +27,17 @@ fn thickline(
     }
 
     // Draw line using existing algorithm to check against
-    // {
+    // if extra {
     //     let mut line = line;
 
-    //     line.start.y += width * 2;
-    //     line.end.y += width * 2;
+    //     // line.start.y += width * 2;
+    //     // line.end.y += width * 2;
 
-    //     line.into_styled(PrimitiveStyle::with_stroke(Rgb888::WHITE, width as u32))
-    //         .draw(display)?;
+    //     line.into_styled(embedded_graphics::primitives::PrimitiveStyle::with_stroke(
+    //         Rgb888::WHITE,
+    //         width as u32,
+    //     ))
+    //     .draw(display)?;
     // }
 
     let non_mul_line = line;
@@ -46,16 +49,10 @@ fn thickline(
 
     let seed_line_delta = seed_line.delta();
 
-    let seed_line_step = Point::new(
-        if seed_line_delta.x >= 0 { 1 } else { -1 },
-        if seed_line_delta.y >= 0 { 1 } else { -1 },
-    );
-
-    let (thickness_majorminor, seed_line_delta, seed_line_step) = if seed_is_y_major {
+    let (thickness_majorminor, seed_line_delta) = if seed_is_y_major {
         (
             MajorMinor::new(non_mul_perpendicular_delta.y, non_mul_perpendicular_delta.x),
             MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
-            MajorMinor::new(seed_line_step.y_axis(), seed_line_step.x_axis()),
         )
     }
     // X-major line (i.e. X delta is longer than Y)
@@ -63,7 +60,6 @@ fn thickline(
         (
             MajorMinor::new(non_mul_perpendicular_delta.x, non_mul_perpendicular_delta.y),
             MajorMinor::new(seed_line_delta.x, seed_line_delta.y),
-            MajorMinor::new(seed_line_step.x_axis(), seed_line_step.y_axis()),
         )
     };
 
@@ -132,22 +128,11 @@ fn thickline(
     let thickness_dx = thickness_majorminor.major.abs();
     let thickness_dy = thickness_majorminor.minor.abs();
 
-    // Start error must be scaled the same as the major/minor errors used in `parallel_line()` to
-    // set the starting error correctly.
-    let parallel_dx = parallel_delta.major.abs();
-    let parallel_dy = parallel_delta.minor.abs();
-
-    // let parallel_threshold = 2 * parallel_dy - parallel_dx;
-    let parallel_e_minor = -2 * parallel_dx;
-    let parallel_e_major = 2 * parallel_dy;
-
     // let threshold = dx - 2 * dy;
     // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
     let mut seed_line_error = 2 * dy - dx;
-    let mut parallel_error_left = 2 * parallel_dy - parallel_dx;
-    // let mut parallel_error_left = 0i32;
 
     // Subtract 1 if using AA so 1px wide lines are _only_ drawn with AA - no solid fill
     let thickness_threshold =
@@ -175,41 +160,26 @@ fn thickline(
         if seed_line_error > 0 {
             seed_line_error += e_minor;
 
-            if parallel_error_left > 0 {
-                parallel_error_left += parallel_e_minor;
+            mul_point += parallel_step_full.major;
 
-                mul_point += parallel_step_full.major;
-
-                if extra {
-                    parallel_line_2(
-                        mul_point,
-                        non_mul_line,
-                        parallel_step,
-                        parallel_delta,
-                        2 * parallel_dy - parallel_dx,
-                        Rgb888::CSS_AQUAMARINE,
-                        false,
-                        0,
-                        display,
-                        true,
-                    )?;
-                }
-            }
+            parallel_line_2(
+                mul_point,
+                non_mul_line,
+                parallel_step,
+                parallel_delta,
+                Rgb888::CSS_AQUAMARINE,
+                display,
+                true,
+            )?;
 
             thickness_accumulator += 2 * thickness_dy;
-            parallel_error_left += parallel_e_major;
         } else {
             parallel_line_2(
                 mul_point,
                 non_mul_line,
                 parallel_step,
                 parallel_delta,
-                // Required instead of zero otherwise the starting pixels of the line before the first
-                // minor step are too long
-                2 * parallel_dy - parallel_dx,
                 Rgb888::CSS_AQUAMARINE,
-                false,
-                0,
                 display,
                 false,
             )?;
@@ -227,11 +197,8 @@ fn thickline(
         non_mul_line,
         parallel_step,
         parallel_delta,
-        2 * parallel_dy - parallel_dx,
         // Rgb888::CSS_GOLDENROD,
         Rgb888::CSS_AQUAMARINE,
-        false,
-        0,
         swap_aa_direction,
         display,
     )?;
@@ -257,10 +224,7 @@ fn parallel_line_aa(
     line: Line,
     step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
-    start_error: i32,
     c: Rgb888,
-    skip_first: bool,
-    mut last_offset: i32,
     swap_aa_direction: bool,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
@@ -271,16 +235,17 @@ fn parallel_line_aa(
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
 
-    let threshold = dx - 2 * dy;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    // TODO: Skip first/last offset
-    let mut length = dx + 1;
-    let mut error = start_error;
+    let length = dx;
+    let mut error = 2 * dy - dx;
 
+    // Blend colour for AA edge
     let background = Rgb888::BLACK;
 
-    for _i in 0..(length + last_offset) {
+    // FIXME: If line is exactly diagonal, no AA is performed. It should have a 50% edge.
+
+    for _i in 0..length {
         let aa_colour = {
             let mul = (if line_is_y_major {
                 point.x & 255
@@ -313,7 +278,7 @@ fn parallel_line_aa(
 
         Pixel(aa_p, aa_colour).draw(display)?;
 
-        if error > threshold {
+        if error > 0 {
             point += step.minor;
             error += e_minor;
         }
@@ -330,10 +295,7 @@ fn parallel_line_2(
     line: Line,
     step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
-    start_error: i32,
     c: Rgb888,
-    skip_first: bool,
-    mut last_offset: i32,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
     extra: bool,
 ) -> Result<(), std::convert::Infallible> {
@@ -344,28 +306,13 @@ fn parallel_line_2(
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
 
-    // let threshold = 2 * dy - dx;
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    // TODO: Might need skip_first/last offset
-    let mut length = dx + 1;
-    let mut error = start_error;
+    let length = dx;
+    // Setting this to zero causes the first segment before the minor step to be too long
+    let mut error = 2 * dy - dx;
 
-    // if skip_first {
-    //     // Some of the length was consumed by this initial skip iteration. If this is omitted, the
-    //     // line will be drawn 1px too long.
-    //     last_offset -= 1;
-
-    //     if error > 0 {
-    //         point += step.minor;
-    //         error += e_minor;
-    //     }
-
-    //     error += e_major;
-    //     point += step.major;
-    // }
-
-    for _i in 0..(length + last_offset) {
+    for _i in 0..length {
         let p = Point::new(
             if line_is_y_major {
                 point.x >> 8
