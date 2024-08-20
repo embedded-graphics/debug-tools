@@ -149,7 +149,7 @@ fn thickline(
     //     1
     // };
 
-    let swap_aa_direction = parallel_step.minor.x < 0 || parallel_step.minor.y < 0;
+    let swap_aa_direction = parallel_step_full.minor.x < 0 || parallel_step_full.minor.y < 0;
 
     let mut mul_point = mul_line.start;
 
@@ -164,7 +164,7 @@ fn thickline(
 
             parallel_line_2(
                 mul_point,
-                non_mul_line,
+                parallel_is_y_major,
                 parallel_step,
                 parallel_delta,
                 Rgb888::CSS_AQUAMARINE,
@@ -176,7 +176,7 @@ fn thickline(
         } else {
             parallel_line_2(
                 mul_point,
-                non_mul_line,
+                parallel_is_y_major,
                 parallel_step,
                 parallel_delta,
                 Rgb888::CSS_AQUAMARINE,
@@ -194,7 +194,7 @@ fn thickline(
     // Final AA line
     parallel_line_aa(
         mul_point,
-        non_mul_line,
+        parallel_is_y_major,
         parallel_step,
         parallel_delta,
         // Rgb888::CSS_GOLDENROD,
@@ -221,7 +221,7 @@ fn integer_lerp(a: u8, b: u8, f: u8) -> u8 {
 
 fn parallel_line_aa(
     start: Point,
-    line: Line,
+    line_is_y_major: bool,
     step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
     c: Rgb888,
@@ -229,8 +229,6 @@ fn parallel_line_aa(
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
-
-    let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
 
     let dx = delta.major.abs();
     let dy = delta.minor.abs();
@@ -292,15 +290,13 @@ fn parallel_line_aa(
 
 fn parallel_line_2(
     start: Point,
-    line: Line,
+    line_is_y_major: bool,
     step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
     c: Rgb888,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
     extra: bool,
 ) -> Result<(), std::convert::Infallible> {
-    let line_is_y_major = line.delta().abs().y >= line.delta().abs().x;
-
     let mut point = start;
 
     let dx = delta.major.abs();
