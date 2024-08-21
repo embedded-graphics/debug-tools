@@ -152,6 +152,9 @@ fn thickline(
     let swap_aa_direction = parallel_step_full.minor.x < 0 || parallel_step_full.minor.y < 0;
 
     let mut mul_point = mul_line.start;
+    let mut mul_point2 = mul_line.start;
+
+    dbg!(parallel_step, parallel_step_full);
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         // Pixel(point, Rgb888::RED).draw(display)?;
@@ -161,6 +164,7 @@ fn thickline(
             seed_line_error += e_minor;
 
             mul_point += parallel_step_full.major;
+            mul_point2 += parallel_step.major;
 
             parallel_line_2(
                 mul_point,
@@ -188,32 +192,117 @@ fn thickline(
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
 
+        dbg!(mul_point, mul_point2, mul_point2.y & 255);
+
+        if extra {
+            let point = mul_point2;
+            let background = Rgb888::BLACK;
+            let c = Rgb888::RED;
+
+            let aa_colour = {
+                let mul = (if parallel_is_y_major {
+                    point.y & 255
+                } else {
+                    point.x & 255
+                }) as u8;
+
+                // Some octants need the AA direction to go the other way
+                let mul = if swap_aa_direction { 255 - mul } else { mul };
+
+                Rgb888::new(
+                    integer_lerp(c.r(), background.r(), mul),
+                    integer_lerp(c.g(), background.g(), mul),
+                    integer_lerp(c.b(), background.b(), mul),
+                )
+            };
+
+            let point = mul_point - parallel_step_full.major;
+            let aa_p = Point::new(
+                if parallel_is_y_major {
+                    point.x >> 8
+                } else {
+                    point.x
+                },
+                if parallel_is_y_major {
+                    point.y
+                } else {
+                    point.y >> 8
+                },
+            );
+
+            Pixel(aa_p, aa_colour).draw(display)?;
+        }
+
         mul_point += parallel_step_full.minor * -1;
+        mul_point2 += parallel_step.minor * -1;
     }
 
-    // Final AA line
-    parallel_line_aa(
-        mul_point,
-        parallel_is_y_major,
-        parallel_step,
-        parallel_delta,
-        // Rgb888::CSS_GOLDENROD,
-        Rgb888::CSS_AQUAMARINE,
-        swap_aa_direction,
-        display,
-    )?;
+    if extra {
+        // Final AA line
+        parallel_line_aa(
+            mul_point,
+            parallel_is_y_major,
+            parallel_step,
+            parallel_delta,
+            // Rgb888::CSS_GOLDENROD,
+            Rgb888::CSS_AQUAMARINE,
+            swap_aa_direction,
+            display,
+        )?;
 
-    // First AA line
-    parallel_line_aa(
-        mul_line.start + parallel_step_full.minor,
-        parallel_is_y_major,
-        parallel_step,
-        parallel_delta,
-        // Rgb888::CSS_GOLDENROD,
-        Rgb888::CSS_AQUAMARINE,
-        !swap_aa_direction,
-        display,
-    )?;
+        // First AA line
+        parallel_line_aa(
+            mul_line.start + parallel_step_full.minor,
+            parallel_is_y_major,
+            parallel_step,
+            parallel_delta,
+            // Rgb888::CSS_GOLDENROD,
+            Rgb888::CSS_AQUAMARINE,
+            !swap_aa_direction,
+            display,
+        )?;
+    }
+
+    // {
+    //     let line = Line::new(mul_line.start, mul_point);
+
+    //     let delta = line.delta();
+
+    //     let step = Point::new(
+    //         if delta.x >= 0 { 1 } else { -1 },
+    //         if delta.y >= 0 { 1 } else { -1 },
+    //     );
+
+    //     let (delta, step) = if !seed_is_y_major {
+    //         (
+    //             MajorMinor::new(delta.y.abs(), delta.x.abs()),
+    //             MajorMinor::new(
+    //                 step.y_axis(),
+    //                 Point::new((delta.x / delta.y).abs(), 0).component_mul(step),
+    //             ),
+    //         )
+    //     } else {
+    //         (
+    //             MajorMinor::new(delta.x.abs(), delta.y.abs()),
+    //             MajorMinor::new(
+    //                 step.x_axis(),
+    //                 Point::new(0, (delta.y / delta.x).abs()).component_mul(step),
+    //             ),
+    //         )
+    //     };
+
+    //     dbg!(delta, step, line, seed_is_y_major);
+
+    //     parallel_line_2(
+    //         line.start,
+    //         !seed_is_y_major,
+    //         step,
+    //         delta,
+    //         Rgb888::RED,
+    //         display,
+    //         false,
+    //     )?;
+    // }
 
     Ok(())
 }
