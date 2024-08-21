@@ -21,6 +21,7 @@ fn thickline(
     line: Line,
     width: i32,
     extra: bool,
+    phase: i32,
 ) -> Result<(), std::convert::Infallible> {
     if width == 0 {
         return Ok(());
@@ -85,6 +86,10 @@ fn thickline(
 
     let mul_delta = mul_line.delta();
 
+    let mul_seed = mul_line.perpendicular();
+
+    let mul_seed_delta = mul_seed.delta();
+
     let parallel_delta = mul_line.delta();
 
     let parallel_step = Point::new(
@@ -114,11 +119,17 @@ fn thickline(
 
     // ---
 
-    // let slope = if parallel_is_y_major {
-    //     mul_delta.x / mul_delta.y
-    // } else {
-    //     mul_delta.y / mul_delta.x
-    // };
+    let slope = if parallel_is_y_major {
+        mul_delta.x / mul_delta.y
+    } else {
+        mul_delta.y / mul_delta.x
+    };
+
+    let seed_slope = if seed_is_y_major {
+        mul_seed_delta.x / mul_seed_delta.y
+    } else {
+        mul_seed_delta.y / mul_seed_delta.x
+    };
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -154,7 +165,10 @@ fn thickline(
     let mut mul_point = mul_line.start;
     let mut mul_point2 = mul_line.start;
 
-    dbg!(parallel_step, parallel_step_full);
+    // let mut aa = -128i32;
+    let mut aa = phase;
+
+    dbg!(mul_point, mul_point2, slope);
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         // Pixel(point, Rgb888::RED).draw(display)?;
@@ -192,8 +206,6 @@ fn thickline(
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
 
-        dbg!(mul_point, mul_point2, mul_point2.y & 255);
-
         if extra {
             let point = mul_point2;
             let background = Rgb888::BLACK;
@@ -208,6 +220,8 @@ fn thickline(
 
                 // Some octants need the AA direction to go the other way
                 let mul = if swap_aa_direction { 255 - mul } else { mul };
+
+                let mul = (aa & 255) as u8;
 
                 Rgb888::new(
                     integer_lerp(c.r(), background.r(), mul),
@@ -235,33 +249,35 @@ fn thickline(
 
         mul_point += parallel_step_full.minor * -1;
         mul_point2 += parallel_step.minor * -1;
+
+        aa += seed_slope;
     }
 
-    if extra {
-        // Final AA line
-        parallel_line_aa(
-            mul_point,
-            parallel_is_y_major,
-            parallel_step,
-            parallel_delta,
-            // Rgb888::CSS_GOLDENROD,
-            Rgb888::CSS_AQUAMARINE,
-            swap_aa_direction,
-            display,
-        )?;
+    // if extra {
+    //     // Final AA line
+    //     parallel_line_aa(
+    //         mul_point,
+    //         parallel_is_y_major,
+    //         parallel_step,
+    //         parallel_delta,
+    //         // Rgb888::CSS_GOLDENROD,
+    //         Rgb888::CSS_AQUAMARINE,
+    //         swap_aa_direction,
+    //         display,
+    //     )?;
 
-        // First AA line
-        parallel_line_aa(
-            mul_line.start + parallel_step_full.minor,
-            parallel_is_y_major,
-            parallel_step,
-            parallel_delta,
-            // Rgb888::CSS_GOLDENROD,
-            Rgb888::CSS_AQUAMARINE,
-            !swap_aa_direction,
-            display,
-        )?;
-    }
+    //     // First AA line
+    //     parallel_line_aa(
+    //         mul_line.start + parallel_step_full.minor,
+    //         parallel_is_y_major,
+    //         parallel_step,
+    //         parallel_delta,
+    //         // Rgb888::CSS_GOLDENROD,
+    //         Rgb888::CSS_AQUAMARINE,
+    //         !swap_aa_direction,
+    //         display,
+    //     )?;
+    // }
 
     // {
     //     let line = Line::new(mul_line.start, mul_point);
@@ -455,6 +471,7 @@ struct LineDebug {
     start: Point,
     end: Point,
     stroke_width: u32,
+    phase: i32,
     extra: bool,
 }
 
@@ -471,8 +488,8 @@ impl App for LineDebug {
         Self {
             start: end - Point::new(80, 35),
             end,
-            // end: start + Point::new(100, 0),
             stroke_width: 10,
+            phase: 0,
             extra: true,
         }
     }
@@ -482,6 +499,7 @@ impl App for LineDebug {
             Parameter::new("start", &mut self.start),
             Parameter::new("end", &mut self.end),
             Parameter::new("stroke", &mut self.stroke_width),
+            Parameter::new("phase", &mut self.phase),
             Parameter::new("extra", &mut self.extra),
         ]
     }
@@ -498,7 +516,13 @@ impl App for LineDebug {
 
         let _mock_display: MockDisplay<Rgb888> = MockDisplay::new();
 
-        thickline(display, Line::new(self.start, self.end), width, self.extra)?;
+        thickline(
+            display,
+            Line::new(self.start, self.end),
+            width,
+            self.extra,
+            self.phase,
+        )?;
 
         // let l = Line::new(self.start, self.end);
 
