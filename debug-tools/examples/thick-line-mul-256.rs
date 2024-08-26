@@ -45,28 +45,10 @@ fn thickline(
     let non_mul_perpendicular_delta = line.perpendicular().delta();
     let seed_line = line.perpendicular();
 
+    let parallel_is_y_major = line.delta().y.abs() >= line.delta().x.abs();
+
     let seed_is_y_major =
         non_mul_perpendicular_delta.y.abs() >= non_mul_perpendicular_delta.x.abs();
-
-    let seed_line_delta = seed_line.delta();
-
-    let (thickness_majorminor, seed_line_delta) = if seed_is_y_major {
-        (
-            MajorMinor::new(non_mul_perpendicular_delta.y, non_mul_perpendicular_delta.x),
-            MajorMinor::new(seed_line_delta.y, seed_line_delta.x),
-        )
-    }
-    // X-major line (i.e. X delta is longer than Y)
-    else {
-        (
-            MajorMinor::new(non_mul_perpendicular_delta.x, non_mul_perpendicular_delta.y),
-            MajorMinor::new(seed_line_delta.x, seed_line_delta.y),
-        )
-    };
-
-    // ---
-
-    let parallel_is_y_major = line.delta().y.abs() >= line.delta().x.abs();
 
     // Using a block to isolate mutability
     let mul_line = {
@@ -84,13 +66,54 @@ fn thickline(
         line
     };
 
+    let parallel_delta = mul_line.delta();
+
     let mul_delta = mul_line.delta();
 
-    let mul_seed = mul_line.perpendicular();
+    let mul_seed = {
+        let mut line = seed_line;
+
+        if seed_is_y_major {
+            line.start.x *= 256;
+            line.end.x *= 256;
+        } else {
+            line.start.y *= 256;
+            line.end.y *= 256;
+        }
+
+        line
+    };
 
     let mul_seed_delta = mul_seed.delta();
 
-    let parallel_delta = mul_line.delta();
+    let seed_step = Point::new(
+        if mul_seed_delta.x >= 0 { 1 } else { -1 },
+        if mul_seed_delta.y >= 0 { 1 } else { -1 },
+    );
+
+    let (thickness_majorminor, seed_line_delta, seed_step) = if seed_is_y_major {
+        (
+            MajorMinor::new(non_mul_perpendicular_delta.y, non_mul_perpendicular_delta.x),
+            MajorMinor::new(mul_seed_delta.y, mul_seed_delta.x),
+            MajorMinor::new(
+                seed_step.y_axis(),
+                Point::new((mul_seed_delta.x / mul_seed_delta.y).abs(), 0).component_mul(seed_step),
+            ),
+        )
+    }
+    // X-major line (i.e. X delta is longer than Y)
+    else {
+        (
+            MajorMinor::new(non_mul_perpendicular_delta.x, non_mul_perpendicular_delta.y),
+            MajorMinor::new(mul_seed_delta.x, mul_seed_delta.y),
+            MajorMinor::new(
+                seed_step.x_axis(),
+                Point::new(0, (mul_seed_delta.y / mul_seed_delta.x).abs()).component_mul(seed_step),
+            ),
+        )
+    };
+
+    // ---
 
     let parallel_step = Point::new(
         if parallel_delta.x >= 0 { 1 } else { -1 },
@@ -118,18 +141,6 @@ fn thickline(
     };
 
     // ---
-
-    let slope = if parallel_is_y_major {
-        mul_delta.x / mul_delta.y
-    } else {
-        mul_delta.y / mul_delta.x
-    };
-
-    let seed_slope = if seed_is_y_major {
-        mul_seed_delta.x / mul_seed_delta.y
-    } else {
-        mul_seed_delta.y / mul_seed_delta.x
-    };
 
     let dx = seed_line_delta.major.abs();
     let dy = seed_line_delta.minor.abs();
@@ -163,50 +174,60 @@ fn thickline(
     let swap_aa_direction = parallel_step_full.minor.x < 0 || parallel_step_full.minor.y < 0;
 
     let mut mul_point = mul_line.start;
+    let mut seed_point = mul_seed.start;
 
-    // let mut aa = -128i32;
-    let mut aa = phase;
-
-    dbg!(mul_point, slope);
+    dbg!(seed_point, seed_step, seed_is_y_major);
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
-        // Pixel(point, Rgb888::RED).draw(display)?;
+        let p = Point::new(
+            if seed_is_y_major {
+                seed_point.x >> 8
+            } else {
+                seed_point.x
+            },
+            if seed_is_y_major {
+                seed_point.y
+            } else {
+                seed_point.y >> 8
+            },
+        );
+
+        Pixel(p, Rgb888::RED).draw(display)?;
 
         // Move seed line in minor direction
         if seed_line_error > 0 {
             seed_line_error += e_minor;
 
             mul_point += parallel_step_full.major;
+            seed_point += seed_step.minor;
 
-            parallel_line_2(
-                mul_point,
-                parallel_is_y_major,
-                parallel_step,
-                parallel_delta,
-                Rgb888::CSS_AQUAMARINE,
-                display,
-                true,
-            )?;
+            // parallel_line_2(
+            //     mul_point,
+            //     parallel_is_y_major,
+            //     parallel_step,
+            //     parallel_delta,
+            //     Rgb888::CSS_AQUAMARINE,
+            //     display,
+            //     true,
+            // )?;
 
             thickness_accumulator += 2 * thickness_dy;
         } else {
-            parallel_line_2(
-                mul_point,
-                parallel_is_y_major,
-                parallel_step,
-                parallel_delta,
-                Rgb888::CSS_AQUAMARINE,
-                display,
-                false,
-            )?;
+            // parallel_line_2(
+            //     mul_point,
+            //     parallel_is_y_major,
+            //     parallel_step,
+            //     parallel_delta,
+            //     Rgb888::CSS_AQUAMARINE,
+            //     display,
+            //     false,
+            // )?;
         }
 
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
-
+        seed_point += seed_step.major;
         mul_point += parallel_step_full.minor * -1;
-
-        aa += seed_slope;
     }
 
     // if extra {
