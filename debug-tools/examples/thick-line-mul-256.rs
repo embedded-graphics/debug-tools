@@ -91,7 +91,7 @@ fn thickline(
         if mul_seed_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let (thickness_majorminor, seed_line_delta, seed_step) = if seed_is_y_major {
+    let (thickness_majorminor, seed_line_delta, seed_step, seed_step_full) = if seed_is_y_major {
         (
             MajorMinor::new(non_mul_perpendicular_delta.y, non_mul_perpendicular_delta.x),
             MajorMinor::new(mul_seed_delta.y, mul_seed_delta.x),
@@ -99,6 +99,7 @@ fn thickline(
                 seed_step.y_axis(),
                 Point::new((mul_seed_delta.x / mul_seed_delta.y).abs(), 0).component_mul(seed_step),
             ),
+            MajorMinor::new(seed_step.y_axis(), seed_step.x_axis() * 256),
         )
     }
     // X-major line (i.e. X delta is longer than Y)
@@ -110,6 +111,7 @@ fn thickline(
                 seed_step.x_axis(),
                 Point::new(0, (mul_seed_delta.y / mul_seed_delta.x).abs()).component_mul(seed_step),
             ),
+            MajorMinor::new(seed_step.x_axis(), seed_step.y_axis() * 256),
         )
     };
 
@@ -192,7 +194,40 @@ fn thickline(
             },
         );
 
-        Pixel(p, Rgb888::RED).draw(display)?;
+        let background = Rgb888::BLACK;
+        let c = Rgb888::RED;
+
+        Pixel(p, c).draw(display)?;
+
+        let aa_c = {
+            let c = Rgb888::GREEN;
+
+            let mul = (if seed_is_y_major {
+                seed_point.x & 255
+            } else {
+                seed_point.y & 255
+            }) as u8;
+
+            // Some octants need the AA direction to go the other way
+            let mul = if swap_aa_direction { 255 - mul } else { mul };
+
+            Rgb888::new(
+                integer_lerp(c.r(), background.r(), mul),
+                integer_lerp(c.g(), background.g(), mul),
+                integer_lerp(c.b(), background.b(), mul),
+            )
+        };
+
+        let aa_p = {
+            let p = seed_point - seed_step_full.minor;
+
+            Point::new(
+                if seed_is_y_major { p.x >> 8 } else { p.x },
+                if seed_is_y_major { p.y } else { p.y >> 8 },
+            )
+        };
+
+        Pixel(aa_p, aa_c).draw(display)?;
 
         // Move seed line in minor direction
         if seed_line_error > 0 {
