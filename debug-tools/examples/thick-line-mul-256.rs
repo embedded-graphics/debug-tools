@@ -253,17 +253,6 @@ fn thickline(
 
             seed_point += seed_step.minor;
 
-            parallel_line_2(
-                mul_point,
-                parallel_is_y_major,
-                parallel_step,
-                parallel_delta,
-                Rgb888::CSS_AQUAMARINE,
-                display,
-                false,
-                parallel_error,
-            )?;
-
             if prev.x != p.x {
                 mul_point += parallel_step_full.major;
 
@@ -273,6 +262,17 @@ fn thickline(
 
                 parallel_error += 2 * parallel_delta.minor;
             }
+
+            parallel_line_2(
+                p,
+                parallel_is_y_major,
+                parallel_step,
+                parallel_delta,
+                Rgb888::CSS_AQUAMARINE,
+                display,
+                false,
+                parallel_error,
+            )?;
 
             thickness_accumulator += 2 * thickness_dy;
         } else {
