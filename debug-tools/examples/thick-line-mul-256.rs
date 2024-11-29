@@ -178,7 +178,18 @@ fn thickline(
     let mut mul_point = mul_line.start;
     let mut seed_point = mul_seed.start;
 
-    dbg!(seed_point, seed_step, seed_is_y_major);
+    let mut prev = Point::new(
+        if seed_is_y_major {
+            seed_point.x >> 8
+        } else {
+            seed_point.x
+        },
+        if seed_is_y_major {
+            seed_point.y
+        } else {
+            seed_point.y >> 8
+        },
+    );
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         let p = Point::new(
@@ -233,18 +244,21 @@ fn thickline(
         if seed_line_error > 0 {
             seed_line_error += e_minor;
 
-            mul_point += parallel_step_full.major;
             seed_point += seed_step.minor;
 
-            // parallel_line_2(
-            //     mul_point,
-            //     parallel_is_y_major,
-            //     parallel_step,
-            //     parallel_delta,
-            //     Rgb888::CSS_AQUAMARINE,
-            //     display,
-            //     true,
-            // )?;
+            if prev.x != p.x {
+                mul_point += parallel_step_full.major;
+            }
+
+            parallel_line_2(
+                mul_point,
+                parallel_is_y_major,
+                parallel_step,
+                parallel_delta,
+                Rgb888::CSS_AQUAMARINE,
+                display,
+                true,
+            )?;
 
             thickness_accumulator += 2 * thickness_dy;
         } else {
@@ -263,6 +277,8 @@ fn thickline(
         thickness_accumulator += 2 * thickness_dx;
         seed_point += seed_step.major;
         mul_point += parallel_step_full.minor * -1;
+
+        prev = p;
     }
 
     // if extra {
