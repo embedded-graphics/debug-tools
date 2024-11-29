@@ -275,8 +275,8 @@ fn thickline(
 
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
-        seed_point += seed_step.major;
-        mul_point += parallel_step_full.minor * -1;
+        seed_point += seed_step.major * 2;
+        mul_point += parallel_step_full.minor * -1 * 2;
 
         prev = p;
     }
@@ -444,6 +444,8 @@ fn parallel_line_2(
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
 
+    point += step.major * 2;
+
     let dx = delta.major;
     let dy = delta.minor;
 
@@ -469,19 +471,19 @@ fn parallel_line_2(
 
         Pixel(p, c).draw(display)?;
 
-        // Draws a pixel connecting a diagonal move into a solid stairstep-looking piece. This is
-        // required for the additional diagonal move lines that are drawn when stepping in both the
-        // major and minor directions in the seed line.
-        if extra {
-            let p = point + step.minor;
+        // // Draws a pixel connecting a diagonal move into a solid stairstep-looking piece. This is
+        // // required for the additional diagonal move lines that are drawn when stepping in both the
+        // // major and minor directions in the seed line.
+        // if extra {
+        //     let p = point + step.minor;
 
-            let p = Point::new(
-                if line_is_y_major { p.x >> 8 } else { p.x },
-                if line_is_y_major { p.y } else { p.y >> 8 },
-            );
+        //     let p = Point::new(
+        //         if line_is_y_major { p.x >> 8 } else { p.x },
+        //         if line_is_y_major { p.y } else { p.y >> 8 },
+        //     );
 
-            Pixel(p, c).draw(display)?;
-        }
+        //     Pixel(p, c).draw(display)?;
+        // }
 
         if error > 0 {
             point += step.minor;
