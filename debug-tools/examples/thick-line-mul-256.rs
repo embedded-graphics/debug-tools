@@ -66,6 +66,8 @@ fn thickline(
         line
     };
 
+    let mul_line = line;
+
     let parallel_delta = mul_line.delta();
 
     let mul_delta = mul_line.delta();
@@ -127,18 +129,20 @@ fn thickline(
             MajorMinor::new(parallel_delta.y.abs(), parallel_delta.x.abs()),
             MajorMinor::new(
                 parallel_step.y_axis(),
-                Point::new((mul_delta.x / mul_delta.y).abs(), 0).component_mul(parallel_step),
+                parallel_step.x_axis(),
+                // Point::new((mul_delta.x / mul_delta.y).abs(), 0).component_mul(parallel_step),
             ),
-            MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis() * 256),
+            MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis()),
         )
     } else {
         (
             MajorMinor::new(parallel_delta.x.abs(), parallel_delta.y.abs()),
             MajorMinor::new(
                 parallel_step.x_axis(),
-                Point::new(0, (mul_delta.y / mul_delta.x).abs()).component_mul(parallel_step),
+                parallel_step.y_axis(),
+                // Point::new(0, (mul_delta.y / mul_delta.x).abs()).component_mul(parallel_step),
             ),
-            MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis() * 256),
+            MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis()),
         )
     };
 
@@ -175,7 +179,7 @@ fn thickline(
 
     let swap_aa_direction = parallel_step_full.minor.x < 0 || parallel_step_full.minor.y < 0;
 
-    let mut mul_point = mul_line.start;
+    let mut mul_point = non_mul_line.start;
     let mut seed_point = mul_seed.start;
 
     let mut prev = Point::new(
@@ -190,6 +194,9 @@ fn thickline(
             seed_point.y >> 8
         },
     );
+
+    let mut parallel_error = 2 * parallel_delta.minor + parallel_delta.major;
+    // let mut parallel_error = 0;
 
     while thickness_accumulator.pow(2) <= thickness_threshold {
         let p = Point::new(
@@ -246,10 +253,6 @@ fn thickline(
 
             seed_point += seed_step.minor;
 
-            if prev.x != p.x {
-                mul_point += parallel_step_full.major;
-            }
-
             parallel_line_2(
                 mul_point,
                 parallel_is_y_major,
@@ -257,8 +260,19 @@ fn thickline(
                 parallel_delta,
                 Rgb888::CSS_AQUAMARINE,
                 display,
-                true,
+                false,
+                parallel_error,
             )?;
+
+            if prev.x != p.x {
+                mul_point += parallel_step_full.major;
+
+                if parallel_error > 0 {
+                    parallel_error += -2 * parallel_delta.major;
+                }
+
+                parallel_error += 2 * parallel_delta.minor;
+            }
 
             thickness_accumulator += 2 * thickness_dy;
         } else {
@@ -275,8 +289,8 @@ fn thickline(
 
         seed_line_error += e_major;
         thickness_accumulator += 2 * thickness_dx;
-        seed_point += seed_step.major * 2;
-        mul_point += parallel_step_full.minor * -1 * 2;
+        seed_point += seed_step.major * 3;
+        mul_point += parallel_step_full.minor * -1 * 3;
 
         prev = p;
     }
@@ -441,6 +455,7 @@ fn parallel_line_2(
     c: Rgb888,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
     extra: bool,
+    initial_error: i32,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
 
@@ -453,37 +468,40 @@ fn parallel_line_2(
     let e_major = 2 * dy;
     let length = dx;
     // Setting this to zero causes the first segment before the minor step to be too long
-    let mut error = 2 * dy - dx;
+    // let mut error = 2 * dy - dx;
+    let mut error = initial_error;
 
     for _i in 0..length {
-        let p = Point::new(
-            if line_is_y_major {
-                point.x >> 8
-            } else {
-                point.x
-            },
-            if line_is_y_major {
-                point.y
-            } else {
-                point.y >> 8
-            },
-        );
+        // let p = Point::new(
+        //     if line_is_y_major {
+        //         point.x >> 8
+        //     } else {
+        //         point.x
+        //     },
+        //     if line_is_y_major {
+        //         point.y
+        //     } else {
+        //         point.y >> 8
+        //     },
+        // );
+
+        let p = point;
 
         Pixel(p, c).draw(display)?;
 
-        // // Draws a pixel connecting a diagonal move into a solid stairstep-looking piece. This is
-        // // required for the additional diagonal move lines that are drawn when stepping in both the
-        // // major and minor directions in the seed line.
-        // if extra {
-        //     let p = point + step.minor;
+        // Draws a pixel connecting a diagonal move into a solid stairstep-looking piece. This is
+        // required for the additional diagonal move lines that are drawn when stepping in both the
+        // major and minor directions in the seed line.
+        if extra {
+            let p = point + step.minor;
 
-        //     let p = Point::new(
-        //         if line_is_y_major { p.x >> 8 } else { p.x },
-        //         if line_is_y_major { p.y } else { p.y >> 8 },
-        //     );
+            let p = Point::new(
+                if line_is_y_major { p.x >> 8 } else { p.x },
+                if line_is_y_major { p.y } else { p.y >> 8 },
+            );
 
-        //     Pixel(p, c).draw(display)?;
-        // }
+            Pixel(p, c).draw(display)?;
+        }
 
         if error > 0 {
             point += step.minor;
