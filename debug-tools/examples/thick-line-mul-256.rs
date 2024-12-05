@@ -66,11 +66,9 @@ fn thickline(
         line
     };
 
-    let mul_line = line;
+    let parallel_delta = line.delta();
 
-    let parallel_delta = mul_line.delta();
-
-    let mul_delta = mul_line.delta();
+    let parallel_delta_mul = mul_line.delta();
 
     let mul_seed = {
         let mut line = seed_line;
@@ -124,27 +122,38 @@ fn thickline(
         if parallel_delta.y >= 0 { 1 } else { -1 },
     );
 
-    let (parallel_delta, parallel_step, parallel_step_full) = if parallel_is_y_major {
-        (
-            MajorMinor::new(parallel_delta.y.abs(), parallel_delta.x.abs()),
-            MajorMinor::new(
-                parallel_step.y_axis(),
-                parallel_step.x_axis(),
-                // Point::new((mul_delta.x / mul_delta.y).abs(), 0).component_mul(parallel_step),
-            ),
-            MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis()),
-        )
-    } else {
-        (
-            MajorMinor::new(parallel_delta.x.abs(), parallel_delta.y.abs()),
-            MajorMinor::new(
-                parallel_step.x_axis(),
-                parallel_step.y_axis(),
-                // Point::new(0, (mul_delta.y / mul_delta.x).abs()).component_mul(parallel_step),
-            ),
-            MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis()),
-        )
-    };
+    let (parallel_delta, parallel_step, parallel_step_mul, parallel_step_full) =
+        if parallel_is_y_major {
+            (
+                MajorMinor::new(parallel_delta.y.abs(), parallel_delta.x.abs()),
+                MajorMinor::new(
+                    parallel_step.y_axis(),
+                    parallel_step.x_axis(),
+                    // Point::new((parallel_delta_mul.x / parallel_delta_mul.y).abs(), 0).component_mul(parallel_step),
+                ),
+                MajorMinor::new(
+                    parallel_step.y_axis(),
+                    Point::new((parallel_delta_mul.x / parallel_delta_mul.y).abs(), 0)
+                        .component_mul(parallel_step),
+                ),
+                MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis()),
+            )
+        } else {
+            (
+                MajorMinor::new(parallel_delta.x.abs(), parallel_delta.y.abs()),
+                MajorMinor::new(
+                    parallel_step.x_axis(),
+                    parallel_step.y_axis(),
+                    // Point::new(0, (parallel_delta_mul.y / parallel_delta_mul.x).abs()).component_mul(parallel_step),
+                ),
+                MajorMinor::new(
+                    parallel_step.x_axis(),
+                    Point::new(0, (parallel_delta_mul.y / parallel_delta_mul.x).abs())
+                        .component_mul(parallel_step),
+                ),
+                MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis()),
+            )
+        };
 
     // ---
 
@@ -295,6 +304,17 @@ fn thickline(
         prev = p;
     }
 
+    parallel_line_2_aa(
+        mul_point,
+        parallel_is_y_major,
+        parallel_step_mul,
+        parallel_delta,
+        Rgb888::CSS_GOLDENROD,
+        display,
+        false,
+        phase,
+    )?;
+
     // if extra {
     //     // Final AA line
     //     parallel_line_aa(
@@ -378,32 +398,51 @@ fn integer_lerp(a: u8, b: u8, f: u8) -> u8 {
     res as u8
 }
 
-fn parallel_line_aa(
+fn parallel_line_2_aa(
     start: Point,
     line_is_y_major: bool,
-    step: MajorMinor<Point>,
+    mut step: MajorMinor<Point>,
     delta: MajorMinor<i32>,
     c: Rgb888,
-    swap_aa_direction: bool,
     display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
+    extra: bool,
+    initial_error: i32,
 ) -> Result<(), std::convert::Infallible> {
     let mut point = start;
 
-    let dx = delta.major;
-    let dy = delta.minor;
+    point += step.major * 2;
+
+    let mut dx = delta.major;
+    let mut dy = delta.minor;
+
+    if line_is_y_major {
+        dx *= 256;
+        point.x *= 256;
+        // step.minor.x = (step.minor.x * 256) / (step.minor.y * 256);
+    } else {
+        dy *= 256;
+        point.y *= 256;
+        // step.minor.y = (step.minor.y * 256) / (step.minor.x * 256);
+    }
 
     let e_minor = -2 * dx;
     let e_major = 2 * dy;
-    let length = dx;
-    let mut error = 2 * dy - dx;
+    let length = delta.major;
+    // Setting this to zero causes the first segment before the minor step to be too long
+    // let mut error = 2 * dy - dx;
+    let mut error = initial_error;
 
-    // Blend colour for AA edge
     let background = Rgb888::BLACK;
 
-    // FIXME: If line is exactly diagonal, no AA is performed. It should have a 50% edge.
-
     for _i in 0..length {
-        let aa_colour = {
+        let p = point;
+
+        let p = Point::new(
+            if line_is_y_major { p.x >> 8 } else { p.x },
+            if line_is_y_major { p.y } else { p.y >> 8 },
+        );
+
+        let c = {
             let mul = (if line_is_y_major {
                 point.x & 255
             } else {
@@ -411,7 +450,7 @@ fn parallel_line_aa(
             }) as u8;
 
             // Some octants need the AA direction to go the other way
-            let mul = if swap_aa_direction { 255 - mul } else { mul };
+            // let mul = if swap_aa_direction { 255 - mul } else { mul };
 
             Rgb888::new(
                 integer_lerp(c.r(), background.r(), mul),
@@ -420,28 +459,29 @@ fn parallel_line_aa(
             )
         };
 
-        let aa_p = Point::new(
-            if line_is_y_major {
-                point.x >> 8
-            } else {
-                point.x
-            },
-            if line_is_y_major {
-                point.y
-            } else {
-                point.y >> 8
-            },
-        );
+        Pixel(p, c).draw(display)?;
 
-        Pixel(aa_p, aa_colour).draw(display)?;
+        // Draws a pixel connecting a diagonal move into a solid stairstep-looking piece. This is
+        // required for the additional diagonal move lines that are drawn when stepping in both the
+        // major and minor directions in the seed line.
+        if extra {
+            let p = point + step.minor;
+
+            let p = Point::new(
+                if line_is_y_major { p.x >> 8 } else { p.x },
+                if line_is_y_major { p.y } else { p.y >> 8 },
+            );
+
+            Pixel(p, c).draw(display)?;
+        }
 
         if error > 0 {
             point += step.minor;
             error += e_minor;
         }
 
-        error += e_major;
         point += step.major;
+        error += e_major;
     }
 
     Ok(())
@@ -510,6 +550,75 @@ fn parallel_line_2(
 
         point += step.major;
         error += e_major;
+    }
+
+    Ok(())
+}
+
+fn parallel_line_aa(
+    start: Point,
+    line_is_y_major: bool,
+    step: MajorMinor<Point>,
+    delta: MajorMinor<i32>,
+    c: Rgb888,
+    swap_aa_direction: bool,
+    display: &mut impl DrawTarget<Color = Rgb888, Error = std::convert::Infallible>,
+) -> Result<(), std::convert::Infallible> {
+    let mut point = start;
+
+    let dx = delta.major;
+    let dy = delta.minor;
+
+    let e_minor = -2 * dx;
+    let e_major = 2 * dy;
+    let length = dx;
+    let mut error = 2 * dy - dx;
+
+    // Blend colour for AA edge
+    let background = Rgb888::BLACK;
+
+    // FIXME: If line is exactly diagonal, no AA is performed. It should have a 50% edge.
+
+    for _i in 0..length {
+        let aa_colour = {
+            let mul = (if line_is_y_major {
+                point.x & 255
+            } else {
+                point.y & 255
+            }) as u8;
+
+            // Some octants need the AA direction to go the other way
+            let mul = if swap_aa_direction { 255 - mul } else { mul };
+
+            Rgb888::new(
+                integer_lerp(c.r(), background.r(), mul),
+                integer_lerp(c.g(), background.g(), mul),
+                integer_lerp(c.b(), background.b(), mul),
+            )
+        };
+
+        let aa_p = Point::new(
+            if line_is_y_major {
+                point.x >> 8
+            } else {
+                point.x
+            },
+            if line_is_y_major {
+                point.y
+            } else {
+                point.y >> 8
+            },
+        );
+
+        Pixel(aa_p, aa_colour).draw(display)?;
+
+        if error > 0 {
+            point += step.minor;
+            error += e_minor;
+        }
+
+        error += e_major;
+        point += step.major;
     }
 
     Ok(())
