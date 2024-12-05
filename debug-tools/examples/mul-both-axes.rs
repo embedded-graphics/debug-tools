@@ -41,6 +41,11 @@ fn thickline(
     //     .draw(display)?;
     // }
 
+    let original_line = line;
+    let original_delta = line.delta();
+    let original_seed = line.perpendicular();
+    let original_seed_delta = original_seed.delta();
+
     let line = Line::new(line.start * 256, line.end * 256);
 
     let seed_line = line.perpendicular();
@@ -69,10 +74,36 @@ fn thickline(
         MajorMinor::new(seed_delta.x, seed_delta.y)
     };
 
+    // Plain old boring multiplied by 256
     let seed_step_majorminor = if seed_is_y_major {
         MajorMinor::new(seed_step.y_axis(), seed_step.x_axis())
     } else {
         MajorMinor::new(seed_step.x_axis(), seed_step.y_axis())
+    };
+
+    // Using line slope
+    let seed_step_majorminor = if seed_is_y_major {
+        MajorMinor::new(
+            seed_step.y_axis(),
+            Point::new(
+                seed_delta
+                    .x
+                    .checked_div(original_seed_delta.x * seed_step.x.signum())
+                    .unwrap_or(0),
+                0,
+            ),
+        )
+    } else {
+        MajorMinor::new(
+            seed_step.x_axis(),
+            Point::new(
+                0,
+                seed_delta
+                    .y
+                    .checked_div(original_seed_delta.y * seed_step.y.signum())
+                    .unwrap_or(0),
+            ),
+        )
     };
 
     // ---
