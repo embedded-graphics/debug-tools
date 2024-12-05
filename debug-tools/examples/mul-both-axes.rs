@@ -41,10 +41,16 @@ fn thickline(
     //     .draw(display)?;
     // }
 
-    let original_line = line;
-    let original_delta = line.delta();
+    let original_parallel = line;
+    let original_parallel_delta = line.delta();
     let original_seed = line.perpendicular();
     let original_seed_delta = original_seed.delta();
+    let original_delta_majorminor =
+        if original_parallel_delta.y.abs() >= original_parallel_delta.x.abs() {
+            MajorMinor::new(original_parallel_delta.y, original_parallel_delta.x)
+        } else {
+            MajorMinor::new(original_parallel_delta.x, original_parallel_delta.y)
+        };
 
     let line = Line::new(line.start * 256, line.end * 256);
 
@@ -74,11 +80,22 @@ fn thickline(
         MajorMinor::new(seed_delta.x, seed_delta.y)
     };
 
+    let parallel_delta_majorminor = if parallel_is_y_major {
+        MajorMinor::new(parallel_delta.y, parallel_delta.x)
+    } else {
+        MajorMinor::new(parallel_delta.x, parallel_delta.y)
+    };
+
     // Plain old boring multiplied by 256
     let seed_step_majorminor = if seed_is_y_major {
         MajorMinor::new(seed_step.y_axis(), seed_step.x_axis())
     } else {
         MajorMinor::new(seed_step.x_axis(), seed_step.y_axis())
+    };
+    let parallel_step_majorminor = if parallel_is_y_major {
+        MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis())
+    } else {
+        MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis())
     };
 
     // Using line slope
@@ -105,6 +122,29 @@ fn thickline(
             ),
         )
     };
+    let parallel_step_majorminor = if parallel_is_y_major {
+        MajorMinor::new(
+            parallel_step.y_axis(),
+            Point::new(
+                parallel_delta
+                    .x
+                    .checked_div(original_parallel_delta.x * parallel_step.x.signum())
+                    .unwrap_or(0),
+                0,
+            ),
+        )
+    } else {
+        MajorMinor::new(
+            parallel_step.x_axis(),
+            Point::new(
+                0,
+                parallel_delta
+                    .y
+                    .checked_div(original_parallel_delta.y * parallel_step.y.signum())
+                    .unwrap_or(0),
+            ),
+        )
+    };
 
     // ---
 
@@ -121,7 +161,34 @@ fn thickline(
     for i in 0..width {
         let p = point / 256;
 
-        Pixel(p, Rgb888::CSS_AQUAMARINE).draw(display)?;
+        Pixel(p, Rgb888::RED).draw(display)?;
+
+        // Draw parallel line
+        {
+            let dx = parallel_delta_majorminor.major.abs();
+            let dy = parallel_delta_majorminor.minor.abs();
+
+            // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
+            let e_minor = -2 * dx;
+            let e_major = 2 * dy;
+
+            let mut parallel_line_error = 2 * dy - dx;
+            let mut parallel_point = point + parallel_step_majorminor.major;
+
+            for i in 0..original_delta_majorminor.major.abs() {
+                let p = parallel_point / 256;
+
+                Pixel(p, Rgb888::CSS_AQUAMARINE).draw(display)?;
+
+                if parallel_line_error > 0 {
+                    parallel_point += parallel_step_majorminor.minor;
+                    parallel_line_error += e_minor;
+                }
+
+                parallel_point += parallel_step_majorminor.major;
+                parallel_line_error += e_major;
+            }
+        }
 
         if seed_line_error > 0 {
             point += seed_step_majorminor.minor;
