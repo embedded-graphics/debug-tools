@@ -103,10 +103,7 @@ fn thickline(
         MajorMinor::new(
             seed_step.y_axis(),
             Point::new(
-                seed_delta
-                    .x
-                    .checked_div(original_seed_delta.x * seed_step.x.signum())
-                    .unwrap_or(0),
+                seed_delta.x / original_seed_delta.y * seed_step.y.signum(),
                 0,
             ),
         )
@@ -115,10 +112,7 @@ fn thickline(
             seed_step.x_axis(),
             Point::new(
                 0,
-                seed_delta
-                    .y
-                    .checked_div(original_seed_delta.y * seed_step.y.signum())
-                    .unwrap_or(0),
+                seed_delta.y / original_seed_delta.x * seed_step.x.signum(),
             ),
         )
     };
@@ -126,10 +120,7 @@ fn thickline(
         MajorMinor::new(
             parallel_step.y_axis(),
             Point::new(
-                parallel_delta
-                    .x
-                    .checked_div(original_parallel_delta.x * parallel_step.x.signum())
-                    .unwrap_or(0),
+                parallel_delta.x / original_parallel_delta.y * parallel_step.y.signum(),
                 0,
             ),
         )
@@ -138,10 +129,7 @@ fn thickline(
             parallel_step.x_axis(),
             Point::new(
                 0,
-                parallel_delta
-                    .y
-                    .checked_div(original_parallel_delta.y * parallel_step.y.signum())
-                    .unwrap_or(0),
+                parallel_delta.y / original_parallel_delta.x * parallel_step.x.signum(),
             ),
         )
     };
@@ -173,7 +161,7 @@ fn thickline(
             let e_major = 2 * dy;
 
             let mut parallel_line_error = 2 * dy - dx;
-            let mut parallel_point = point + parallel_step_majorminor.major;
+            let mut parallel_point = point + parallel_step_majorminor.major * 2;
 
             for i in 0..original_delta_majorminor.major.abs() {
                 let p = parallel_point / 256;
@@ -195,8 +183,55 @@ fn thickline(
             seed_line_error += e_minor;
         }
 
-        point += seed_step_majorminor.major;
+        point += seed_step_majorminor.major * 2;
         seed_line_error += e_major;
+    }
+
+    // Draw AA line
+    {
+        let dx = parallel_delta_majorminor.major.abs();
+        let dy = parallel_delta_majorminor.minor.abs();
+
+        // http://kt8216.unixcab.org/murphy/index.html calls e_minor E_diag, and e_major E_square
+        let e_minor = -2 * dx;
+        let e_major = 2 * dy;
+
+        let mut parallel_line_error = 2 * dy - dx;
+        let mut parallel_point = point + parallel_step_majorminor.major * 2;
+
+        for i in 0..original_delta_majorminor.major.abs() {
+            let p = parallel_point / 256;
+
+            let aa_c = {
+                let c = Rgb888::CSS_GOLDENROD;
+                let background = Rgb888::BLACK;
+
+                let mul = (if parallel_is_y_major {
+                    parallel_point.x & 255
+                } else {
+                    parallel_point.y & 255
+                }) as u8;
+
+                // // Some octants need the AA direction to go the other way
+                // let mul = if swap_aa_direction { 255 - mul } else { mul };
+
+                Rgb888::new(
+                    integer_lerp(c.r(), background.r(), mul),
+                    integer_lerp(c.g(), background.g(), mul),
+                    integer_lerp(c.b(), background.b(), mul),
+                )
+            };
+
+            Pixel(p, aa_c).draw(display)?;
+
+            if parallel_line_error > 0 {
+                parallel_point += parallel_step_majorminor.minor;
+                parallel_line_error += e_minor;
+            }
+
+            parallel_point += parallel_step_majorminor.major;
+            parallel_line_error += e_major;
+        }
     }
 
     Ok(())
