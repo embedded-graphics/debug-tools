@@ -155,6 +155,15 @@ fn thickline(
             )
         };
 
+    dbg!(
+        parallel_delta,
+        parallel_step,
+        parallel_step_mul,
+        parallel_step_full
+    );
+
+    todo!();
+
     // ---
 
     let dx = seed_line_delta.major.abs();

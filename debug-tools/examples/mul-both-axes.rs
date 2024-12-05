@@ -27,7 +27,7 @@ fn thickline(
         return Ok(());
     }
 
-    // Draw line using existing algorithm to check against
+    // // Draw line using existing algorithm to check against
     // if extra {
     //     let mut line = line;
 
@@ -36,20 +36,30 @@ fn thickline(
 
     //     line.into_styled(embedded_graphics::primitives::PrimitiveStyle::with_stroke(
     //         Rgb888::WHITE,
-    //         width as u32,
+    //         1,
     //     ))
     //     .draw(display)?;
     // }
 
     let original_parallel = line;
-    let original_parallel_delta = line.delta();
-    let original_seed = line.perpendicular();
+    let original_parallel_delta = original_parallel.delta();
+    let original_seed = original_parallel.perpendicular();
     let original_seed_delta = original_seed.delta();
     let original_delta_majorminor =
         if original_parallel_delta.y.abs() >= original_parallel_delta.x.abs() {
             MajorMinor::new(original_parallel_delta.y, original_parallel_delta.x)
         } else {
             MajorMinor::new(original_parallel_delta.x, original_parallel_delta.y)
+        };
+    let original_seed_step = Point::new(
+        if original_seed_delta.x >= 0 { 1 } else { -1 },
+        if original_seed_delta.y >= 0 { 1 } else { -1 },
+    );
+    let original_seed_step_majorminor =
+        if original_seed_delta.y.abs() >= original_seed_delta.x.abs() {
+            MajorMinor::new(original_seed_step.y_axis(), original_seed_step.x_axis())
+        } else {
+            MajorMinor::new(original_seed_step.x_axis(), original_seed_step.y_axis())
         };
 
     let line = Line::new(line.start * 256, line.end * 256);
@@ -79,11 +89,10 @@ fn thickline(
     } else {
         MajorMinor::new(seed_delta.x, seed_delta.y)
     };
-
     let parallel_delta_majorminor = if parallel_is_y_major {
-        MajorMinor::new(parallel_delta.y, parallel_delta.x)
+        MajorMinor::new(parallel_delta.y / 256, parallel_delta.x)
     } else {
-        MajorMinor::new(parallel_delta.x, parallel_delta.y)
+        MajorMinor::new(parallel_delta.x / 256, parallel_delta.y)
     };
 
     // Plain old boring multiplied by 256
@@ -92,7 +101,7 @@ fn thickline(
     } else {
         MajorMinor::new(seed_step.x_axis(), seed_step.y_axis())
     };
-    let parallel_step_majorminor = if parallel_is_y_major {
+    let parallel_step_256_majorminor = if parallel_is_y_major {
         MajorMinor::new(parallel_step.y_axis(), parallel_step.x_axis())
     } else {
         MajorMinor::new(parallel_step.x_axis(), parallel_step.y_axis())
@@ -126,10 +135,8 @@ fn thickline(
         MajorMinor::new(
             parallel_step.y_axis(),
             Point::new(
-                parallel_delta
-                    .x
-                    .checked_div(original_parallel_delta.x * parallel_step.x.signum())
-                    .unwrap_or(0),
+                (original_parallel_delta.x * 256)
+                    / (original_parallel_delta.y * parallel_step.y.signum()),
                 0,
             ),
         )
@@ -138,10 +145,8 @@ fn thickline(
             parallel_step.x_axis(),
             Point::new(
                 0,
-                parallel_delta
-                    .y
-                    .checked_div(original_parallel_delta.y * parallel_step.y.signum())
-                    .unwrap_or(0),
+                (original_parallel_delta.y * 256)
+                    / (original_parallel_delta.x * parallel_step.x.signum()),
             ),
         )
     };
@@ -157,11 +162,38 @@ fn thickline(
 
     let mut seed_line_error = 2 * dy - dx;
     let mut point = seed_line.start;
+    let mut parallel_point = line.start;
 
     for i in 0..width {
         let p = point / 256;
 
+        // assert_eq!(if seed_is_y_major { point.y } else { point.x } % 256, 0);
+
         Pixel(p, Rgb888::RED).draw(display)?;
+
+        let aa_p = point / 256 - original_seed_step_majorminor.minor * 2;
+
+        let aa_c = {
+            let c = Rgb888::CSS_GOLDENROD;
+            let background = Rgb888::BLACK;
+
+            let mul = (if seed_is_y_major {
+                point.x & 255
+            } else {
+                point.y & 255
+            }) as u8;
+
+            // // Some octants need the AA direction to go the other way
+            // let mul = if swap_aa_direction { 255 - mul } else { mul };
+
+            Rgb888::new(
+                integer_lerp(c.r(), background.r(), mul),
+                integer_lerp(c.g(), background.g(), mul),
+                integer_lerp(c.b(), background.b(), mul),
+            )
+        };
+
+        Pixel(aa_p, aa_c).draw(display)?;
 
         // Draw parallel line
         {
@@ -173,31 +205,36 @@ fn thickline(
             let e_major = 2 * dy;
 
             let mut parallel_line_error = 2 * dy - dx;
-            let mut parallel_point = point + parallel_step_majorminor.major * 2;
+            let mut point = parallel_point + parallel_step_majorminor.major * 2;
 
             for i in 0..original_delta_majorminor.major.abs() {
-                let p = parallel_point / 256;
+                let p = point / 256;
 
                 Pixel(p, Rgb888::CSS_AQUAMARINE).draw(display)?;
 
                 if parallel_line_error > 0 {
-                    parallel_point += parallel_step_majorminor.minor;
+                    point += parallel_step_majorminor.minor;
                     parallel_line_error += e_minor;
                 }
 
-                parallel_point += parallel_step_majorminor.major;
+                point += parallel_step_majorminor.major;
                 parallel_line_error += e_major;
             }
         }
 
         if seed_line_error > 0 {
             point += seed_step_majorminor.minor;
+            parallel_point += parallel_step_256_majorminor.major;
             seed_line_error += e_minor;
         }
 
-        point += seed_step_majorminor.major * 2;
+        point += seed_step_majorminor.major;
+        parallel_point -= parallel_step_256_majorminor.minor;
         seed_line_error += e_major;
     }
+
+    // A gap for debugging
+    parallel_point += seed_step_majorminor.major;
 
     // Draw AA line
     {
@@ -209,19 +246,19 @@ fn thickline(
         let e_major = 2 * dy;
 
         let mut parallel_line_error = 2 * dy - dx;
-        let mut parallel_point = point + parallel_step_majorminor.major * 2;
+        let mut point = parallel_point + parallel_step_majorminor.major * 2;
 
         for i in 0..original_delta_majorminor.major.abs() {
-            let p = parallel_point / 256;
+            let aa_p = point / 256;
 
             let aa_c = {
                 let c = Rgb888::CSS_GOLDENROD;
                 let background = Rgb888::BLACK;
 
                 let mul = (if parallel_is_y_major {
-                    parallel_point.x & 255
+                    point.x & 255
                 } else {
-                    parallel_point.y & 255
+                    point.y & 255
                 }) as u8;
 
                 // // Some octants need the AA direction to go the other way
@@ -234,14 +271,14 @@ fn thickline(
                 )
             };
 
-            Pixel(p, aa_c).draw(display)?;
+            Pixel(aa_p, aa_c).draw(display)?;
 
             if parallel_line_error > 0 {
-                parallel_point += parallel_step_majorminor.minor;
+                point += parallel_step_majorminor.minor;
                 parallel_line_error += e_minor;
             }
 
-            parallel_point += parallel_step_majorminor.major;
+            point += parallel_step_majorminor.major;
             parallel_line_error += e_major;
         }
     }
