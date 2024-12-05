@@ -85,9 +85,9 @@ fn thickline(
     // ---
 
     let seed_delta_majorminor = if seed_is_y_major {
-        MajorMinor::new(seed_delta.y, seed_delta.x)
+        MajorMinor::new(seed_delta.y / 256, seed_delta.x)
     } else {
-        MajorMinor::new(seed_delta.x, seed_delta.y)
+        MajorMinor::new(seed_delta.x / 256, seed_delta.y)
     };
     let parallel_delta_majorminor = if parallel_is_y_major {
         MajorMinor::new(parallel_delta.y / 256, parallel_delta.x)
@@ -112,10 +112,7 @@ fn thickline(
         MajorMinor::new(
             seed_step.y_axis(),
             Point::new(
-                seed_delta
-                    .x
-                    .checked_div(original_seed_delta.x * seed_step.x.signum())
-                    .unwrap_or(0),
+                (original_seed_delta.x * 256) / (original_seed_delta.y * seed_step.y.signum()),
                 0,
             ),
         )
@@ -124,10 +121,7 @@ fn thickline(
             seed_step.x_axis(),
             Point::new(
                 0,
-                seed_delta
-                    .y
-                    .checked_div(original_seed_delta.y * seed_step.y.signum())
-                    .unwrap_or(0),
+                (original_seed_delta.y * 256) / (original_seed_delta.x * seed_step.x.signum()),
             ),
         )
     };
@@ -162,12 +156,11 @@ fn thickline(
 
     let mut seed_line_error = 2 * dy - dx;
     let mut point = seed_line.start;
+    let mut prev = point;
     let mut parallel_point = line.start;
 
     for i in 0..width {
         let p = point / 256;
-
-        // assert_eq!(if seed_is_y_major { point.y } else { point.x } % 256, 0);
 
         Pixel(p, Rgb888::RED).draw(display)?;
 
@@ -224,12 +217,12 @@ fn thickline(
 
         if seed_line_error > 0 {
             point += seed_step_majorminor.minor;
-            parallel_point += parallel_step_256_majorminor.major;
+            parallel_point += seed_step_majorminor.minor;
             seed_line_error += e_minor;
         }
 
         point += seed_step_majorminor.major;
-        parallel_point -= parallel_step_256_majorminor.minor;
+        parallel_point += seed_step_majorminor.major;
         seed_line_error += e_major;
     }
 
