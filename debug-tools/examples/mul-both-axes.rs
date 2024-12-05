@@ -103,7 +103,10 @@ fn thickline(
         MajorMinor::new(
             seed_step.y_axis(),
             Point::new(
-                seed_delta.x / original_seed_delta.y * seed_step.y.signum(),
+                seed_delta
+                    .x
+                    .checked_div(original_seed_delta.x * seed_step.x.signum())
+                    .unwrap_or(0),
                 0,
             ),
         )
@@ -112,7 +115,10 @@ fn thickline(
             seed_step.x_axis(),
             Point::new(
                 0,
-                seed_delta.y / original_seed_delta.x * seed_step.x.signum(),
+                seed_delta
+                    .y
+                    .checked_div(original_seed_delta.y * seed_step.y.signum())
+                    .unwrap_or(0),
             ),
         )
     };
@@ -120,7 +126,10 @@ fn thickline(
         MajorMinor::new(
             parallel_step.y_axis(),
             Point::new(
-                parallel_delta.x / original_parallel_delta.y * parallel_step.y.signum(),
+                parallel_delta
+                    .x
+                    .checked_div(original_parallel_delta.x * parallel_step.x.signum())
+                    .unwrap_or(0),
                 0,
             ),
         )
@@ -129,7 +138,10 @@ fn thickline(
             parallel_step.x_axis(),
             Point::new(
                 0,
-                parallel_delta.y / original_parallel_delta.x * parallel_step.x.signum(),
+                parallel_delta
+                    .y
+                    .checked_div(original_parallel_delta.y * parallel_step.y.signum())
+                    .unwrap_or(0),
             ),
         )
     };
