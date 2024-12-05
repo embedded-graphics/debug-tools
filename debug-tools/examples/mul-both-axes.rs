@@ -160,11 +160,11 @@ fn thickline(
     let mut parallel_point = line.start;
 
     for i in 0..width {
-        let p = point / 256;
+        // let p = point / 256;
 
-        Pixel(p, Rgb888::RED).draw(display)?;
+        // Pixel(p, Rgb888::RED).draw(display)?;
 
-        let aa_p = point / 256 - original_seed_step_majorminor.minor * 2;
+        let aa_p = point / 256 - original_seed_step_majorminor.minor;
 
         let aa_c = {
             let c = Rgb888::CSS_GOLDENROD;
@@ -198,7 +198,7 @@ fn thickline(
             let e_major = 2 * dy;
 
             let mut parallel_line_error = 2 * dy - dx;
-            let mut point = parallel_point + parallel_step_majorminor.major * 2;
+            let mut point = parallel_point;
 
             for i in 0..original_delta_majorminor.major.abs() {
                 let p = point / 256;
@@ -226,9 +226,6 @@ fn thickline(
         seed_line_error += e_major;
     }
 
-    // A gap for debugging
-    parallel_point += seed_step_majorminor.major;
-
     // Draw AA line
     {
         let dx = parallel_delta_majorminor.major.abs();
@@ -239,7 +236,7 @@ fn thickline(
         let e_major = 2 * dy;
 
         let mut parallel_line_error = 2 * dy - dx;
-        let mut point = parallel_point + parallel_step_majorminor.major * 2;
+        let mut point = parallel_point;
 
         for i in 0..original_delta_majorminor.major.abs() {
             let aa_p = point / 256;
